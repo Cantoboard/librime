@@ -32,6 +32,7 @@ glog:
 	-DWITH_GFLAGS:BOOL=OFF \
 	-DCMAKE_BUILD_TYPE:STRING="Release" \
 	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	$(RIME_CMAKE_FLAGS) \
 	&& cmake --build $(build) --target install
 
 leveldb:
@@ -41,6 +42,7 @@ leveldb:
 	-DLEVELDB_BUILD_TESTS:BOOL=OFF \
 	-DCMAKE_BUILD_TYPE:STRING="Release" \
 	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	$(RIME_CMAKE_FLAGS) \
 	&& cmake --build build --target install
 
 marisa:
@@ -48,15 +50,40 @@ marisa:
 	cmake $(SRC_DIR) -Bbuild \
 	-DCMAKE_BUILD_TYPE:STRING="Release" \
 	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	$(RIME_CMAKE_FLAGS) \
 	&& cmake --build build --target install
 
 opencc:
+ifndef RIME_IOS_CROSS_COMPILING
 	cd $(SRC_DIR)/opencc; \
 	cmake . -Bbuild \
 	-DBUILD_SHARED_LIBS:BOOL=OFF \
 	-DCMAKE_BUILD_TYPE:STRING="Release" \
 	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	$(RIME_CMAKE_FLAGS) \
 	&& cmake --build build --target install
+else
+	# For iOS cross compilation, opencc is a special case.
+	# opencc produces libopencc.a & executable opencc-dict, which's used by the build to generate dictionaries.
+	# That means we have to compile opencc twice.
+	# First targeting the host for host executable opencc-dict to generate the dictionaries.
+	# Then cross compile to generate libopencc.a
+	cd $(SRC_DIR)/opencc; \
+	cmake . -Bbuild \
+	-DBUILD_SHARED_LIBS:BOOL=OFF \
+	-DCMAKE_BUILD_TYPE:STRING="Release" \
+	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	&& cmake --build build --target install \
+	&& rm $(THIRD_PARTY_DIR)/lib/libopencc.a \
+	&& echo "Cross compiling..." \
+	&& cmake . -Bbuild/ios \
+	-DBUILD_SHARED_LIBS:BOOL=OFF \
+	-DCMAKE_BUILD_TYPE:STRING="Release" \
+	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	$(RIME_CMAKE_FLAGS) \
+	&& cmake --build build/ios --target libopencc \
+	&& cp build/ios/src/libopencc.a $(THIRD_PARTY_DIR)/lib
+endif
 
 yaml-cpp:
 	cd $(SRC_DIR)/yaml-cpp; \
@@ -66,6 +93,7 @@ yaml-cpp:
 	-DYAML_CPP_BUILD_TOOLS:BOOL=OFF \
 	-DCMAKE_BUILD_TYPE:STRING="Release" \
 	-DCMAKE_INSTALL_PREFIX:PATH="$(THIRD_PARTY_DIR)" \
+	$(RIME_CMAKE_FLAGS) \
 	&& cmake --build build --target install
 
 gtest:

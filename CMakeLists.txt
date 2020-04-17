@@ -41,6 +41,13 @@ if (ENABLE_ASAN)
   set(CMAKE_SHARED_LINKER_FLAGS "${asan_lflags} ${CMAKE_SHARED_LINKER_FLAGS}")
 endif()
 
+if(XCODE_VERSION AND CMAKE_CROSSCOMPILING)
+  set(CMAKE_FIND_ROOT_PATH "/") # Without this line, find_package() can't find boost which sits outside of the iOS SDK.
+  set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "") # iOS app dev should set this.
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED NO)
+endif()
+
 set(Boost_USE_STATIC_LIBS ${BUILD_STATIC})
 set(Gflags_STATIC ${BUILD_STATIC})
 set(Glog_STATIC ${BUILD_STATIC})
@@ -220,7 +227,7 @@ endif()
 
 add_subdirectory(src)
 
-if(BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS AND NOT(XCODE_VERSION AND CMAKE_CROSSCOMPILING))
   add_subdirectory(tools)
 
   if(BUILD_TEST)

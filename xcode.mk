@@ -2,8 +2,21 @@ RIME_ROOT = $(CURDIR)
 
 RIME_DIST_DIR = $(RIME_ROOT)/dist
 
+IOS_CROSS_COMPILE_CMAKE_FLAGS = -DCMAKE_SYSTEM_NAME=iOS \
+-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+-DCMAKE_XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH=NO \
+-DCMAKE_IOS_INSTALL_COMBINED=YES \
+-DCMAKE_MACOSX_BUNDLE=NO
+
 RIME_COMPILER_OPTIONS = CC=clang CXX=clang++ \
 CXXFLAGS="-stdlib=libc++" LDFLAGS="-stdlib=libc++"
+
+ifdef RIME_IOS_CROSS_COMPILING
+	RIME_COMPILER_OPTIONS = CC=clang CXX=clang++ \
+	CFLAGS="-fembed-bitcode" \
+	CXXFLAGS="-stdlib=libc++ -fembed-bitcode" \
+	LDFLAGS="-stdlib=libc++ -fembed-bitcode"
+endif
 
 build = build
 debug debug-with-icu test-debug: build = debug
@@ -17,7 +30,8 @@ release:
 	cmake . -B$(build) -GXcode \
 	-DBUILD_STATIC=ON \
 	-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-	-DCMAKE_INSTALL_PREFIX="$(RIME_DIST_DIR)"
+	-DCMAKE_INSTALL_PREFIX="$(RIME_DIST_DIR)" \
+	$(RIME_CMAKE_FLAGS)
 	cmake --build $(build) --config Release
 
 release-with-icu:
@@ -26,13 +40,15 @@ release-with-icu:
 	-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
 	-DCMAKE_INSTALL_PREFIX="$(RIME_DIST_DIR)" \
 	-DBUILD_WITH_ICU=ON \
-	-DCMAKE_PREFIX_PATH=/usr/local/opt/icu4c
+	-DCMAKE_PREFIX_PATH=/usr/local/opt/icu4c \
+	$(RIME_CMAKE_FLAGS)
 	cmake --build $(build) --config Release
 
 debug:
 	cmake . -B$(build) -GXcode \
 	-DBUILD_STATIC=ON \
-	-DBUILD_SEPARATE_LIBS=ON
+	-DBUILD_SEPARATE_LIBS=ON \
+	$(RIME_CMAKE_FLAGS)
 	cmake --build $(build) --config Debug
 
 debug-with-icu:
@@ -40,7 +56,8 @@ debug-with-icu:
 	-DBUILD_STATIC=ON \
 	-DBUILD_SEPARATE_LIBS=ON \
 	-DBUILD_WITH_ICU=ON \
-	-DCMAKE_PREFIX_PATH=/usr/local/opt/icu4c
+	-DCMAKE_PREFIX_PATH=/usr/local/opt/icu4c \
+	$(RIME_CMAKE_FLAGS)
 	cmake --build $(build) --config Debug
 
 clean:
@@ -70,3 +87,9 @@ thirdparty:
 
 thirdparty/%:
 	$(RIME_COMPILER_OPTIONS) make -f thirdparty.mk $(@:thirdparty/%=%)
+
+ios:
+	RIME_IOS_CROSS_COMPILING=true RIME_CMAKE_FLAGS='$(IOS_CROSS_COMPILE_CMAKE_FLAGS)' make -f xcode.mk
+
+ios/%:
+	RIME_IOS_CROSS_COMPILING=true RIME_CMAKE_FLAGS='$(IOS_CROSS_COMPILE_CMAKE_FLAGS)' make -f xcode.mk $(@:ios/%=%)
