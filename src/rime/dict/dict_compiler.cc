@@ -150,6 +150,12 @@ bool DictCompiler::Compile(const string &schema_file) {
   if (options_ & kRebuildPrism) {
     rebuild_prism = true;
   }
+#if defined(__APPLE__) && TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+  // Disable dict generation on iOS.
+  LOG(INFO) << "DictCompiler::Compile() disabled on iOS";
+  rebuild_table = false;
+  rebuild_prism = false;
+#endif
   Syllabary syllabary;
   if (rebuild_table) {
     EntryCollector collector;

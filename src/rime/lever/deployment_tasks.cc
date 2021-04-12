@@ -425,7 +425,8 @@ static bool ConfigNeedsUpdate(Config* config) {
     }
     if (recorded_time != (int) fs::last_write_time(source_file)) {
       LOG(INFO) << "source file " << (recorded_time ? "changed: " : "added: ")
-                << source_file.string();
+                << source_file.string() 
+                << " recorded_time " << recorded_time <<  " file time " << (int) fs::last_write_time(source_file);
       return true;
     }
   }
