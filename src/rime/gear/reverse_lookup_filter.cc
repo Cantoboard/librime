@@ -4,6 +4,7 @@
 //
 // 2013-11-05 GONG Chen <chen.sst@gmail.com>
 //
+#include <utf8.h>
 #include <rime/candidate.h>
 #include <rime/engine.h>
 #include <rime/schema.h>
@@ -78,6 +79,26 @@ void ReverseLookupFilter::Process(const an<Candidate>& cand) {
   string codes;
   if (rev_dict_->ReverseLookup(phrase->text(), &codes)) {
     comment_formatter_.Apply(&codes);
+    if (!codes.empty()) {
+      phrase->set_comment(codes);
+    }
+  } else {
+    // ReverseLookup the phrase word by word.
+    string cur_word_codes;
+    const char* pp = phrase->text().c_str();
+
+    uint32_t cp;
+    while ((cp = utf8::unchecked::next(pp)), cp) {
+      string word_in_phrase;
+      utf8::unchecked::append(cp, word_in_phrase.begin());
+      // printf("UFO word_in_phrase=%s\n", word_in_phrase.c_str());
+      if (rev_dict_->ReverseLookup(word_in_phrase, &cur_word_codes)) {
+        comment_formatter_.Apply(&cur_word_codes);
+        // printf("UFO phase rev lookup %s %s\n", word_in_phrase.c_str(), cur_word_codes.c_str());
+        if (!codes.empty()) { codes.append(" "); }
+        codes.append(cur_word_codes);
+      }
+    }
     if (!codes.empty()) {
       phrase->set_comment(codes);
     }
