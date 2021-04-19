@@ -622,8 +622,8 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
     }
     for (const auto& spellings : index->second) {
       SyllableId syll_id = spellings.first;
-      TableAccessor accessor(query.Access(syll_id));
       for (auto props : spellings.second) {
+        TableAccessor accessor(query.Access(syll_id, props->credibility));
         size_t end_pos = props->end_pos;
         if (!accessor.exhausted()) {
           (*result)[end_pos].push_back(accessor);

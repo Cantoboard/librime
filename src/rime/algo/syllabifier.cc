@@ -21,7 +21,7 @@ using VertexQueue = std::priority_queue<Vertex,
                                         std::greater<Vertex>>;
 
 const double kCompletionPenalty = -0.6931471805599453; // log(0.5)
-const double kCorrectionCredibility = -4.605170185988091; // log(0.01)
+const double kCorrectionCredibility = -50; // log(0.01)
 
 int Syllabifier::BuildSyllableGraph(const string &input,
                                     Prism &prism,
@@ -106,6 +106,11 @@ int Syllabifier::BuildSyllableGraph(const string &input,
             if (corrector_ &&
                 exact_match_syllables.find(m.value) ==
                 exact_match_syllables.end()) {
+              // Accept normal spellings only.
+              if (props.type != kNormalSpelling) {
+                  accessor.Next();
+                  continue;
+              }
               props.is_correction = true;
               props.credibility = kCorrectionCredibility;
             }
