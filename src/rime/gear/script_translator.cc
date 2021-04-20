@@ -121,6 +121,7 @@ class ScriptTranslation : public Translation {
 
  protected:
   bool CheckEmpty();
+  bool PreferUserPhrase();
   bool IsNormalSpelling() const;
   void PrepareCandidate();
   template <class QueryResult>
@@ -372,15 +373,27 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
     translated_len = (std::max)(translated_len, phrase_->rbegin()->first);
   if (user_phrase_ && !user_phrase_->empty())
     translated_len = (std::max)(translated_len, user_phrase_->rbegin()->first);
-  if (translated_len < consumed &&
-      syllable_graph.edges.size() > 1) {  // at least 2 syllables required
-    sentence_ = MakeSentence(dict, user_dict);
-  }
 
   if (phrase_)
     phrase_iter_ = phrase_->rbegin();
   if (user_phrase_)
     user_phrase_iter_ = user_phrase_->rbegin();
+
+  // If the first candidate is a correction, make sentense.
+  bool is_first_candidate_a_correction = false;
+  if (enable_correction_) {
+      CheckEmpty();
+      PrepareCandidate();
+      if (candidate_) {
+          is_first_candidate_a_correction = syllabifier_->IsCandidateCorrection(*candidate_);
+      }
+  }
+
+  if ((translated_len < consumed || is_first_candidate_a_correction) &&
+      syllable_graph.edges.size() > 1) {  // at least 2 syllables required
+    sentence_ = MakeSentence(dict, user_dict);
+  }
+
   return !CheckEmpty();
 }
 
@@ -394,16 +407,11 @@ bool ScriptTranslation::Next() {
       sentence_.reset();
       return !CheckEmpty();
     }
-    int user_phrase_code_length = 0;
-    if (user_phrase_ && user_phrase_iter_ != user_phrase_->rend()) {
-      user_phrase_code_length = user_phrase_iter_->first;
-    }
     int phrase_code_length = 0;
     if (phrase_ && phrase_iter_ != phrase_->rend()) {
       phrase_code_length = phrase_iter_->first;
     }
-    if (user_phrase_code_length > 0 &&
-        user_phrase_code_length >= phrase_code_length) {
+    if (PreferUserPhrase()) {
       UserDictEntryIterator& uter(user_phrase_iter_->second);
       if (!uter.Next()) {
         ++user_phrase_iter_;
@@ -458,6 +466,30 @@ an<Candidate> ScriptTranslation::Peek() {
   return candidate_;
 }
 
+bool ScriptTranslation::PreferUserPhrase() {
+  int user_phrase_code_length = 0;
+  double user_phrase_weight = 0;
+  if (user_phrase_ && user_phrase_iter_ != user_phrase_->rend()) {
+    user_phrase_code_length = user_phrase_iter_->first;
+    UserDictEntryIterator& uter = user_phrase_iter_->second;
+    const auto& entry = uter.Peek();
+    user_phrase_weight = entry->weight;
+  }
+
+  int phrase_code_length = 0;
+  double phrase_weight = std::numeric_limits<double>::lowest();
+  if (phrase_ && phrase_iter_ != phrase_->rend()) {
+    phrase_code_length = phrase_iter_->first;
+    DictEntryIterator& iter = phrase_iter_->second;
+    const auto& entry = iter.Peek();
+    phrase_weight = entry->weight;
+  }
+
+  return user_phrase_code_length > 0 &&
+         user_phrase_code_length >= phrase_code_length &&
+         (user_phrase_code_length > phrase_code_length || user_phrase_weight >= phrase_weight);
+}
+
 void ScriptTranslation::PrepareCandidate() {
   if (exhausted()) {
     candidate_ = nullptr;
@@ -467,17 +499,14 @@ void ScriptTranslation::PrepareCandidate() {
     candidate_ = sentence_;
     return;
   }
-  size_t user_phrase_code_length = 0;
-  if (user_phrase_ && user_phrase_iter_ != user_phrase_->rend()) {
-    user_phrase_code_length = user_phrase_iter_->first;
-  }
   size_t phrase_code_length = 0;
   if (phrase_ && phrase_iter_ != phrase_->rend()) {
     phrase_code_length = phrase_iter_->first;
   }
   an<Phrase> cand;
-  if (user_phrase_code_length > 0 &&
-      user_phrase_code_length >= phrase_code_length) {
+  if (PreferUserPhrase()) {
+    size_t user_phrase_code_length = user_phrase_iter_->first;
+
     UserDictEntryIterator& uter = user_phrase_iter_->second;
     const auto& entry = uter.Peek();
     DLOG(INFO) << "user phrase '" << entry->text

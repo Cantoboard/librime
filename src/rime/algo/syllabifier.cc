@@ -21,7 +21,8 @@ using VertexQueue = std::priority_queue<Vertex,
                                         std::greater<Vertex>>;
 
 const double kCompletionPenalty = -0.6931471805599453; // log(0.5)
-const double kCorrectionCredibility = -50; // log(0.01)
+const double kPenaltyForAmbiguousSyllable = -0.6931471805599453; // log(0.5)
+const double kCorrectionCredibility = -115.1292546497; // log(1e-50)
 
 int Syllabifier::BuildSyllableGraph(const string &input,
                                     Prism &prism,
@@ -253,7 +254,6 @@ int Syllabifier::BuildSyllableGraph(const string &input,
 
 void Syllabifier::CheckOverlappedSpellings(SyllableGraph *graph,
                                            size_t start, size_t end) {
-  const double kPenaltyForAmbiguousSyllable = -23.025850929940457; // log(1e-10)
   if (!graph || graph->edges.find(start) == graph->edges.end())
     return;
   // if "Z" = "YX", mark the vertex between Y and X an ambiguous syllable joint
