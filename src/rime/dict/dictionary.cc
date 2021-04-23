@@ -87,9 +87,10 @@ void DictEntryIterator::AddChunk(dictionary::Chunk&& chunk) {
 void DictEntryIterator::Sort() {
   auto& chunks = query_result_->chunks;
   // partial-sort remaining chunks, move best match to chunk_index_
+  size_t sort_first_n = std::min((size_t)30, (size_t)std::distance(chunks.begin() + chunk_index_, chunks.end()));
   std::partial_sort(
       chunks.begin() + chunk_index_,
-      chunks.begin() + chunk_index_ + 1,
+      chunks.begin() + chunk_index_ + sort_first_n,
       chunks.end(),
       dictionary::compare_chunk_by_head_element);
 }
