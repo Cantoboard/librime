@@ -22,6 +22,10 @@
 #include <rime/resource.h>
 #include <rime/service.h>
 
+#ifdef __APPLE__
+#include "TargetConditionals.h"
+#endif
+
 namespace fs = boost::filesystem;
 
 namespace rime {
