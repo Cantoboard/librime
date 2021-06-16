@@ -91,6 +91,7 @@ bool ReverseDb::Build(DictSettings* settings,
                       uint32_t dict_file_checksum) {
   LOG(INFO) << "building reversedb...";
   ReverseLookupTable rev_table;
+  std::unordered_map<string, double> textSyllableWeights;
   int syllable_id = 0;
   for (const string& syllable : syllabary) {
     auto it = vocabulary.find(syllable_id++);
@@ -98,6 +99,7 @@ bool ReverseDb::Build(DictSettings* settings,
       continue;
     const auto& entries(it->second.entries);
     for (const auto& e : entries) {
+      textSyllableWeights[e->text + syllable] = e->weight;
       rev_table[e->text].insert(syllable);
     }
   }
@@ -110,7 +112,17 @@ bool ReverseDb::Build(DictSettings* settings,
   // save reverse lookup entries
   for (const auto& v : rev_table) {
     const string& key(v.first);
-    string value(boost::algorithm::join(v.second, " "));
+    // sort reverse lookup entries by weight.
+    string value;
+    if (v.second.size() == 1) {
+      value = boost::algorithm::join(v.second, " ");
+    } else {
+      std::vector<string> sortedEntries(v.second.begin(), v.second.end());
+      std::sort(sortedEntries.begin(), sortedEntries.end(), [key, textSyllableWeights](string a, string b) {
+        return textSyllableWeights.at(key + a) > textSyllableWeights.at(key + b);
+      });
+      value = boost::algorithm::join(sortedEntries, " ");
+    }
     key_trie_builder.Add(key, 0.0, &key_ids[i]);
     value_trie_builder.Add(value, 0.0, &value_ids[i]);
     ++i;
