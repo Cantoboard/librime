@@ -78,7 +78,6 @@ leveldb:
 	-DCMAKE_INSTALL_PREFIX:PATH="$(third_party_dir)" \
 	$(RIME_CMAKE_FLAGS) \
 	&& cmake --build $(build) --target install
-	&& echo "Cross compiling..." \
 
 marisa:
 	cd $(src_dir)/marisa-trie; \

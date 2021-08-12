@@ -123,7 +123,7 @@ test-debug: debug
 	(cd $(build)/test; Debug/rime_test)
 
 thirdparty:
-	make -f thirdparty.mk
+	$(RIME_COMPILER_OPTIONS) make -f thirdparty.mk
 
 thirdparty/boost:
 	./install-boost.sh
