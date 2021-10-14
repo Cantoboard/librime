@@ -101,11 +101,11 @@ struct Metadata {
 class TableAccessor {
  public:
   TableAccessor() = default;
-  TableAccessor(const Code& index_code, const List<table::Entry>* entries,
+  TableAccessor(const IndexCode& index_code, const List<table::Entry>* entries,
                 double credibility = 0.0);
-  TableAccessor(const Code& index_code, const Array<table::Entry>* entries,
+  TableAccessor(const IndexCode& index_code, const Array<table::Entry>* entries,
                 double credibility = 0.0);
-  TableAccessor(const Code& index_code, const table::TailIndex* code_map,
+  TableAccessor(const IndexCode& index_code, const table::TailIndex* code_map,
                 double credibility = 0.0);
 
   RIME_API bool Next();
@@ -114,12 +114,12 @@ class TableAccessor {
   RIME_API size_t remaining() const;
   RIME_API const table::Entry* entry() const;
   RIME_API const table::Code* extra_code() const;
-  const Code& index_code() const { return index_code_; }
+  const IndexCode& index_code() const { return index_code_; }
   Code code() const;
   double credibility() const { return credibility_; }
 
  private:
-  Code index_code_;
+  IndexCode index_code_;
   const table::Entry* entries_ = nullptr;
   const table::LongEntry* long_entries_ = nullptr;
   size_t size_ = 0;
