@@ -56,12 +56,13 @@ size_t match_extra_code(const table::Code* extra_code, size_t depth,
     return current_pos;  // success
   if (current_pos >= syll_graph.interpreted_length)
     return 0;  // failure (possibly success for completion in the future)
-  auto index = syll_graph.indices.find(current_pos);
-  if (index == syll_graph.indices.end())
+  if (current_pos >= syll_graph.indices.size()) {
     return 0;
+  }
+  auto& index = syll_graph.indices[current_pos];
   SyllableId current_syll_id = extra_code->at[depth];
-  auto spellings = index->second.find(current_syll_id);
-  if (spellings == index->second.end())
+  auto spellings = index.find(current_syll_id);
+  if (spellings == index.end())
     return 0;
   size_t best_match = 0;
   for (const SpellingProperties* props : spellings->second) {

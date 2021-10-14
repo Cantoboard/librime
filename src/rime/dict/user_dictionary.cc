@@ -193,13 +193,13 @@ void UserDictionary::DfsLookup(const SyllableGraph& syll_graph,
                                size_t current_pos,
                                const string& current_prefix,
                                DfsState* state) {
-  auto index = syll_graph.indices.find(current_pos);
-  if (index == syll_graph.indices.end()) {
+  if (current_pos >= syll_graph.indices.size()) {
     return;
   }
+  auto& index = syll_graph.indices[current_pos];
   DLOG(INFO) << "dfs lookup starts from " << current_pos;
   string prefix;
-  for (const auto& spelling : index->second) {
+  for (const auto& spelling : index) {
     DLOG(INFO) << "prefix: '" << current_prefix << "'"
                << ", syll_id: " << spelling.first
                << ", num_spellings: " << spelling.second.size();

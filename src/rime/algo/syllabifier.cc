@@ -57,6 +57,7 @@ int Syllabifier::BuildSyllableGraph(const string &input,
     set<SyllableId> exact_match_syllables;
     auto current_input = input.substr(current_pos);
     prism.CommonPrefixSearch(current_input, &matches);
+    std::cout << "current_input: " << current_input << " " << matches.size() << "\n";
     if (corrector_) {
       for (auto &m : matches) {
         exact_match_syllables.insert(m.value);
@@ -95,6 +96,7 @@ int Syllabifier::BuildSyllableGraph(const string &input,
         while (!accessor.exhausted()) {
           SyllableId syllable_id = accessor.syllable_id();
           EdgeProperties props(accessor.properties());
+          //std::cout << "input: " << input.substr(current_pos, end_pos) << " " << m.value << " " << syllable_id << " " << props.type << "\n";
           if (strict_spelling_ &&
               matches_input &&
               props.type != kNormalSpelling) {
@@ -283,6 +285,8 @@ void Syllabifier::CheckOverlappedSpellings(SyllableGraph *graph,
 }
 
 void Syllabifier::Transpose(SyllableGraph* graph) {
+  graph->indices.clear();
+  graph->indices.resize(graph->interpreted_length);
   for (const auto& start : graph->edges) {
     auto& index(graph->indices[start.first]);
     for (const auto& end : boost::adaptors::reverse(start.second)) {
