@@ -20,6 +20,8 @@
 #include <rime/dict/dict_compiler.h>
 #include <rime/lever/deployment_tasks.h>
 
+#include <sys/time.h>
+
 using namespace rime;
 
 class RimeConsole {
@@ -101,6 +103,44 @@ class RimeConsole {
   connection conn_;
 };
 
+extern std::unordered_map<std::string, int> query_dup;
+/*
+namespace rime {
+extern int cachceHit;
+extern int cacheMiss;
+}*/
+
+struct ProfileTimer {
+private:
+  unsigned long& counter;
+  unsigned long start_time;
+  
+  unsigned long get_timestamp() {
+    struct timeval now;
+    int rv = gettimeofday(&now, NULL);
+    return now.tv_sec * 1000 + now.tv_usec / 1000;
+  }
+
+public:
+  ProfileTimer(unsigned long& counter): counter(counter), start_time(get_timestamp()) {
+  }
+  
+  ~ProfileTimer() {
+    counter += get_timestamp() - start_time;
+  }
+};
+
+static void profile(RimeConsole& console, string input) {
+  unsigned long counter = 0;
+  int retry_count = 10;
+  {
+    ProfileTimer timer(counter);
+    for (int i = 0; i < retry_count; ++ i)
+      console.ProcessLine(input);
+  }
+  std::cerr << input.length() << " " << counter / retry_count << "ms " << counter / retry_count / input.length() << std::endl;
+}
+
 // program entry
 int main(int argc, char *argv[]) {
   // initialize la Rime
@@ -108,6 +148,10 @@ int main(int argc, char *argv[]) {
   LoadModules(kDefaultModules);
 
   Deployer deployer;
+  /*deployer.prebuilt_data_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton";
+  deployer.user_data_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton";
+  deployer.staging_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton/build";*/
+  chdir("/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton");
   InstallationUpdate installation;
   if (!installation.Run(&deployer)) {
     std::cerr << "failed to initialize installation." << std::endl;
@@ -125,7 +169,28 @@ int main(int argc, char *argv[]) {
   // "-i" turns on interactive mode (no commit at the end of line)
   bool interactive = argc > 1 && !strcmp(argv[1], "-i");
   console.set_interactive(interactive);
-
+  /*
+  profile(console, "diulaamaa");
+  profile(console, "gfhgsdgm");
+  
+  string s = "s";
+  for (int i = 0; i < 16; ++i) {
+    profile(console, s);
+    s += "s";
+  }*/
+  
+  /*
+  profile(console, "abcdefgh");
+  profile(console, "dnlmhgccnlmstp");
+  profile(console, "ghksfdghls");
+  profile(console, "ghfgjkawuiwert");*/
+  profile(console, "sssssssssssssss");
+  profile(console, "lllllllllllllll");
+  profile(console, "ddddddddddddddd");
+  
+  //std::cerr << "hit: " << rime::cachceHit << " miss: " << rime::cacheMiss << " ms " << counter << std::endl;
+  return 0;
+  
   // process input
   string line;
   while (std::cin) {
