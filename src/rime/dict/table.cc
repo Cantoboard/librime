@@ -21,6 +21,25 @@ const int kTableFormatLowestCompatible = 4.0;
 const char kTableFormatPrefix[] = "Rime::Table/";
 const size_t kTableFormatPrefixLen = sizeof(kTableFormatPrefix) - 1;
 
+void IndexCode::clear() {
+  size_ = 0;
+  memset(this, 0, kIndexCodeMaxLength * sizeof(SyllableId));
+}
+
+SyllableId IndexCode::pop_back() {
+  assert(size_ > 0);
+  return (*this)[size_--];
+}
+
+void IndexCode::push_back(SyllableId syllable_id) {
+  assert(size_ < 3);
+  return (*this)[size_++] = syllable_id;
+}
+
+size_t IndexCode::size() const {
+  return size_;
+}
+
 class TableQuery {
  public:
   TableQuery(table::Index* index) : lv1_index_(index) {
@@ -43,7 +62,7 @@ class TableQuery {
 
  protected:
   size_t level_ = 0;
-  Code index_code_;
+  IndexCode index_code_;
   vector<double> credibility_;
 
  private:
@@ -55,7 +74,7 @@ class TableQuery {
   table::TailIndex* lv4_index_ = nullptr;
 };
 
-TableAccessor::TableAccessor(const Code& index_code,
+TableAccessor::TableAccessor(const IndexCode& index_code,
                              const List<table::Entry>* list,
                              double credibility)
     : index_code_(index_code),
@@ -64,7 +83,7 @@ TableAccessor::TableAccessor(const Code& index_code,
       credibility_(credibility) {
 }
 
-TableAccessor::TableAccessor(const Code& index_code,
+TableAccessor::TableAccessor(const IndexCode& index_code,
                              const Array<table::Entry>* array,
                              double credibility)
     : index_code_(index_code),
@@ -73,7 +92,7 @@ TableAccessor::TableAccessor(const Code& index_code,
       credibility_(credibility) {
 }
 
-TableAccessor::TableAccessor(const Code& index_code,
+TableAccessor::TableAccessor(const IndexCode& index_code,
                              const table::TailIndex* code_map,
                              double credibility)
     : index_code_(index_code),
@@ -113,10 +132,10 @@ const table::Code* TableAccessor::extra_code() const {
 
 Code TableAccessor::code() const {
   auto extra = extra_code();
-  if (!extra) {
-    return index_code();
-  }
   Code code(index_code());
+  if (!extra) {
+    return code;
+  }
   for (auto p = extra->begin(); p != extra->end(); ++p) {
     code.push_back(*p);
   }
@@ -209,7 +228,7 @@ bool TableQuery::Walk(SyllableId syllable_id) {
   return true;
 }
 
-inline static Code add_syllable(Code code, SyllableId syllable_id) {
+inline static IndexCode add_syllable(IndexCode code, SyllableId syllable_id) {
   code.push_back(syllable_id);
   return code;
 }

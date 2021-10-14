@@ -18,9 +18,25 @@ using Syllabary = set<string>;
 
 using SyllableId = int32_t;
 
+static const size_t kIndexCodeMaxLength = 3;
+
+struct IndexCode: public std::array<SyllableId, kIndexCodeMaxLength> {
+  void clear();
+  SyllableId pop_back();
+  void push_back(SyllableId syllable_id);
+  size_t size() const;
+private:
+  size_t size_;
+};
+
 class Code : public vector<SyllableId> {
  public:
-  static const size_t kIndexCodeMaxLength = 3;
+  Code() = default;
+  Code(const IndexCode& indexCode) {
+    resize(indexCode.size());
+    std::copy(indexCode.cbegin(), indexCode.cend(), begin());
+  };
+  static const size_t kIndexCodeMaxLength = rime::kIndexCodeMaxLength;
 
   bool operator< (const Code& other) const;
   bool operator== (const Code& other) const;
