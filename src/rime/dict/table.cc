@@ -620,6 +620,16 @@ TableAccessor Table::QueryPhrases(const Code& code) {
   return query.Access(-1);
 }
 
+struct QueryNode {
+  size_t pos;
+  TableQuery table_query;
+  
+  QueryNode(const size_t& pos, const TableQuery& table_query) : pos(pos), table_query(table_query) {
+  }
+};
+
+// using QueryNode = pair<size_t, TableQuery>;
+
 bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
                   TableQueryResult* result) {
   if (!result ||
@@ -627,12 +637,12 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
       start_pos >= syll_graph.interpreted_length)
     return false;
   result->clear();
-  std::queue<pair<size_t, TableQuery>> q;
+  std::queue<QueryNode> q;
   TableQuery initial_state(index_);
   q.push({start_pos, initial_state});
   while (!q.empty()) {
-    size_t current_pos = q.front().first;
-    TableQuery query(q.front().second);
+    size_t current_pos = q.front().pos;
+    TableQuery query(q.front().table_query);
     q.pop();
     if (current_pos >= syll_graph.indices.size()) {
       continue;
