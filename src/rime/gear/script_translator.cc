@@ -565,21 +565,16 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
   const int kMaxSyllablesForUserPhraseQuery = 5;
   const auto& syllable_graph = syllabifier_->syllable_graph();
   WordGraph graph;
-  std::unordered_set<int> user_dict_visited, dict_visited;
   for (const auto& x : syllable_graph.edges) {
     auto& same_start_pos = graph[x.first];
-    if (user_dict && user_dict_visited.find(x.first) == user_dict_visited.end()) {
+    if (user_dict) {
       EnrollEntries(same_start_pos,
                     user_dict->Lookup(syllable_graph,
                                       x.first,
                                       kMaxSyllablesForUserPhraseQuery));
-      user_dict_visited.insert(x.first);
     }
     // merge lookup results
-    if (dict_visited.find(x.first) == dict_visited.end()) {
-      EnrollEntries(same_start_pos, dict->Lookup(syllable_graph, x.first));
-      dict_visited.insert(x.first);
-    }
+    EnrollEntries(same_start_pos, dict->Lookup(syllable_graph, x.first));
   }
   if (auto sentence =
       poet_->MakeSentence(graph,
