@@ -18,9 +18,7 @@ using Syllabary = set<string>;
 
 using SyllableId = int32_t;
 
-static const size_t kIndexCodeMaxLength = 3;
-
-struct IndexCode: public std::array<SyllableId, kIndexCodeMaxLength> {
+struct IndexCode: public std::array<SyllableId, 4> {
   void clear();
   SyllableId pop_back();
   void push_back(SyllableId syllable_id);
@@ -33,10 +31,11 @@ class Code : public vector<SyllableId> {
  public:
   Code() = default;
   Code(const IndexCode& indexCode) {
-    resize(indexCode.size());
-    std::copy(indexCode.cbegin(), indexCode.cend(), begin());
+    size_t new_size = indexCode.size();
+    resize(new_size);
+    std::copy(indexCode.cbegin(), indexCode.cbegin() + new_size, begin());
   };
-  static const size_t kIndexCodeMaxLength = rime::kIndexCodeMaxLength;
+  static const size_t kIndexCodeMaxLength = 3;
 
   bool operator< (const Code& other) const;
   bool operator== (const Code& other) const;
@@ -94,5 +93,11 @@ class Vocabulary : public map<int, VocabularyPage> {
 using ReverseLookupTable = map<string, set<string>>;
 
 }  // namespace rime
+
+namespace std {
+  template <> struct std::hash<rime::IndexCode> {
+    size_t operator()(const rime::IndexCode& code) const;
+  };
+}
 
 #endif  // RIME_VOCABULARY_H_

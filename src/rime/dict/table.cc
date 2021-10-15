@@ -13,6 +13,12 @@
 #include <rime/algo/syllabifier.h>
 #include <rime/dict/table.h>
 
+namespace std {
+  size_t hash<rime::IndexCode>::operator()(const rime::IndexCode& code) const {
+    return boost::hash_range(code.cbegin(), code.cbegin() + code.size());
+  }
+}
+
 namespace rime {
 
 const char kTableFormatLatest[] = "Rime::Table/4.0";
@@ -23,7 +29,7 @@ const size_t kTableFormatPrefixLen = sizeof(kTableFormatPrefix) - 1;
 
 void IndexCode::clear() {
   size_ = 0;
-  memset(this, 0, kIndexCodeMaxLength * sizeof(SyllableId));
+  memset(this, 0, max_size() * sizeof(SyllableId));
 }
 
 SyllableId IndexCode::pop_back() {
@@ -32,7 +38,7 @@ SyllableId IndexCode::pop_back() {
 }
 
 void IndexCode::push_back(SyllableId syllable_id) {
-  assert(size_ < 3);
+  assert(size_ < max_size());
   return (*this)[size_++] = syllable_id;
 }
 
