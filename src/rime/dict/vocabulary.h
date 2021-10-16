@@ -23,6 +23,14 @@ struct IndexCode: public std::array<SyllableId, 3> {
   SyllableId pop_back();
   void push_back(SyllableId syllable_id);
   size_t size() const;
+  
+  IndexCode::iterator end() {
+    return begin() + size_;
+  }
+  
+  IndexCode::const_iterator end() const {
+    return begin() + size_;
+  }
 private:
   size_t size_ = 0;
 };
