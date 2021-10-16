@@ -74,10 +74,10 @@ class TableQuery {
   void Reset();
 
   size_t level() const { return level_; }
+  IndexCode index_code_;
 
  protected:
   size_t level_ = 0;
-  IndexCode index_code_;
   vector<double> credibility_;
 
  private:

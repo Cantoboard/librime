@@ -169,6 +169,15 @@ int main(int argc, char *argv[]) {
   // "-i" turns on interactive mode (no commit at the end of line)
   bool interactive = argc > 1 && !strcmp(argv[1], "-i");
   console.set_interactive(interactive);
+  
+  // console.ProcessLine("diu");
+  // console.ProcessLine("diudiudiu");
+  console.ProcessLine("diudi");
+  /*
+  console.ProcessLine("diu");
+  console.ProcessLine("diunei");
+  console.ProcessLine("diuneilou");
+  console.ProcessLine("diuneiloumei");*/
   /*
   profile(console, "diulaamaa");
   profile(console, "gfhgsdgm");
@@ -184,9 +193,9 @@ int main(int argc, char *argv[]) {
   profile(console, "dnlmhgccnlmstp");
   profile(console, "ghksfdghls");
   profile(console, "ghfgjkawuiwert");*/
-  profile(console, "sssssssssssssss");
+  /*profile(console, "sssssssssssssss");
   profile(console, "lllllllllllllll");
-  profile(console, "ddddddddddddddd");
+  profile(console, "ddddddddddddddd");*/
   
   //std::cerr << "hit: " << rime::cachceHit << " miss: " << rime::cacheMiss << " ms " << counter << std::endl;
   return 0;
