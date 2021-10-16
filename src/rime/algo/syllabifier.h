@@ -35,6 +35,7 @@ using SpellingIndex = hash_map<SyllableId, SpellingPropertiesList>;
 using SpellingIndices = vector<SpellingIndex>;
 
 struct SyllableGraph {
+  string input;
   size_t input_length = 0;
   size_t interpreted_length = 0;
   VertexMap vertices;

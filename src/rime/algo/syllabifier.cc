@@ -29,7 +29,7 @@ int Syllabifier::BuildSyllableGraph(const string &input,
                                     SyllableGraph *graph) {
   if (input.empty())
     return 0;
-
+  graph->input = input;
   size_t farthest = 0;
   VertexQueue queue;
   queue.push(Vertex{0, kNormalSpelling});  // start
