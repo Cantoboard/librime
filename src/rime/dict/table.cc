@@ -17,6 +17,15 @@ namespace std {
   size_t hash<rime::IndexCode>::operator()(const rime::IndexCode& code) const {
     return boost::hash_range(code.cbegin(), code.cbegin() + code.size());
   }
+
+  template <typename T1, typename T2> struct hash<std::pair<T1, T2>> {
+    size_t operator()(const pair<T1, T2>& p) const {
+      size_t seed = 0;
+      boost::hash_combine(seed, p.first);
+      boost::hash_combine(seed, p.second);
+      return seed;
+    }
+  };
 }
 
 namespace rime {
@@ -629,6 +638,19 @@ struct QueryNode {
 };
 
 // using QueryNode = pair<size_t, TableQuery>;
+static string index_code_to_string(Table* table, const IndexCode& index_code) {
+  string result;
+  for (auto it = index_code.begin(); it != index_code.end(); ++it) {
+    result += table->GetSyllableById(*it);
+  }
+  return result;
+}
+
+size_t longest_common_prefix_len(const string& a, const string& b) {
+  auto a_begin_it = a.cbegin();
+  auto first_mismatch = std::mismatch(a_begin_it, a.cend(), b.cbegin(), b.cend());
+  return first_mismatch.first - a_begin_it;
+}
 
 bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
                   TableQueryResult* result) {
@@ -636,7 +658,11 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
       !index_ ||
       start_pos >= syll_graph.interpreted_length)
     return false;
+  
+  LOG(ERROR) << "Query: " << syll_graph.input;
+  
   result->clear();
+  
   std::queue<QueryNode> q;
   TableQuery initial_state(index_);
   q.push({start_pos, initial_state});
@@ -647,6 +673,9 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
     if (current_pos >= syll_graph.indices.size()) {
       continue;
     }
+    
+    LOG(ERROR) << "DFS: " << index_code_to_string(this, query.index_code_);
+    
     auto& index = syll_graph.indices[current_pos];
     if (query.level() == Code::kIndexCodeMaxLength) {
       TableAccessor accessor(query.Access(-1));
@@ -657,6 +686,7 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
     }
     for (const auto& spellings : index) {
       SyllableId syll_id = spellings.first;
+      LOG(ERROR) << "DFS " << syll_graph.input << " " << index_code_to_string(this, query.index_code_) << " child: " << GetSyllableById(syll_id);
       for (auto props : spellings.second) {
         TableAccessor accessor(query.Access(syll_id, props->credibility));
         size_t end_pos = props->end_pos;
