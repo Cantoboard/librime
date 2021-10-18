@@ -88,6 +88,7 @@ class RimeConsole {
       PrintComposition(ctx);
     }
     else {
+      PrintComposition(ctx);
       if (ctx && ctx->IsComposing()) {
         ctx->Commit();
       }
@@ -169,6 +170,18 @@ int main(int argc, char *argv[]) {
   // "-i" turns on interactive mode (no commit at the end of line)
   bool interactive = argc > 1 && !strcmp(argv[1], "-i");
   console.set_interactive(interactive);
+  
+  //console.ProcessLine("diu");
+  //console.ProcessLine("diu");
+  /*console.ProcessLine("di");
+  console.ProcessLine("diunei");
+  console.ProcessLine("diu");
+  console.ProcessLine("di");*/
+  
+  console.ProcessLine("diuneiloumouhai");
+  //console.ProcessLine("diuneilaa");
+  //console.ProcessLine("diulaasing");
+  
   /*
   profile(console, "diulaamaa");
   profile(console, "gfhgsdgm");
@@ -183,10 +196,11 @@ int main(int argc, char *argv[]) {
   profile(console, "abcdefgh");
   profile(console, "dnlmhgccnlmstp");
   profile(console, "ghksfdghls");
-  profile(console, "ghfgjkawuiwert");*/
+  profile(console, "ghfgjkawuiwert");
   profile(console, "sssssssssssssss");
   profile(console, "lllllllllllllll");
   profile(console, "ddddddddddddddd");
+   */
   
   //std::cerr << "hit: " << rime::cachceHit << " miss: " << rime::cacheMiss << " ms " << counter << std::endl;
   return 0;

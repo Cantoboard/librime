@@ -154,6 +154,13 @@ bool DictEntryIterator::Next() {
   return true;
 }
 
+void DictEntryIterator::Reset() {
+  chunk_index_ = 0;
+  for (auto& chunk : query_result_->chunks) {
+    chunk.cursor = 0;
+  }
+}
+
 // Note: does not apply filters
 bool DictEntryIterator::Skip(size_t num_entries) {
   while (num_entries > 0) {
@@ -192,10 +199,11 @@ Dictionary::~Dictionary() {
 static void lookup_table(Table* table,
                          DictEntryCollector* collector,
                          const SyllableGraph& syllable_graph,
+                         an<SyllableGraph> prev_syllable_graph,
                          size_t start_pos,
                          double initial_credibility) {
   TableQueryResult result;
-  if (!table->Query(syllable_graph, start_pos, &result)) {
+  if (!table->Query(syllable_graph, prev_syllable_graph, start_pos, &result)) {
     return;
   }
   // copy result
@@ -231,10 +239,31 @@ Dictionary::Lookup(const SyllableGraph& syllable_graph,
     if (!table->IsOpen())
       continue;
     lookup_table(table.get(), collector.get(),
-                 syllable_graph, start_pos, initial_credibility);
+                 syllable_graph, nullptr, start_pos, initial_credibility);
   }
   if (collector->empty())
     return nullptr;
+  // sort each group of equal code length
+  for (auto& v : *collector) {
+    v.second.Sort();
+  }
+  return collector;
+}
+
+an<DictEntryCollector>
+Dictionary::LookupIncremental(const SyllableGraph& syllable_graph,
+                              const an<SyllableGraph> prev_syllable_graph,
+                              size_t start_pos,
+                              double initial_credibility) {
+  if (!loaded())
+    return nullptr;
+  auto collector = New<DictEntryCollector>();
+  for (const auto& table : tables_) {
+    if (!table->IsOpen())
+      continue;
+    lookup_table(table.get(), collector.get(),
+                 syllable_graph, prev_syllable_graph, start_pos, initial_credibility);
+  }
   // sort each group of equal code length
   for (auto& v : *collector) {
     v.second.Sort();

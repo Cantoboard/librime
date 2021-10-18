@@ -24,6 +24,9 @@ class Poet;
 class UserDictionary;
 struct SyllableGraph;
 
+class DictEntryIterator;
+using DictEntryCollector = map<size_t, DictEntryIterator>;
+
 using WordGraph = map<int, map<int, DictEntryList>>;
 
 class ScriptTranslator : public Translator,
@@ -55,6 +58,7 @@ class ScriptTranslator : public Translator,
                            
    // For resuing previous query result
    an<SyllableGraph> prev_syllable_graph_;
+   an<DictEntryCollector> prev_phrase_;
    WordGraph query_result_cache_;
 };
 

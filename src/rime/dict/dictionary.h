@@ -37,6 +37,7 @@ class DictEntryIterator : public DictEntryFilterBinder {
   RIME_API void AddFilter(DictEntryFilter filter) override;
   RIME_API an<DictEntry> Peek();
   RIME_API bool Next();
+  void Reset();
   bool Skip(size_t num_entries);
   RIME_API bool exhausted() const;
   size_t entry_count() const { return entry_count_; }
@@ -74,6 +75,12 @@ class Dictionary : public Class<Dictionary, const Ticket&> {
   RIME_API an<DictEntryCollector> Lookup(const SyllableGraph& syllable_graph,
                                          size_t start_pos,
                                          double initial_credibility = 0.0);
+  
+  an<DictEntryCollector> LookupIncremental(const SyllableGraph& syllable_graph,
+                                           an<SyllableGraph> prev_syllable_graph,
+                                           size_t start_pos,
+                                           double initial_credibility);
+  
   // if predictive is true, do an expand search with limit,
   // otherwise do an exact match.
   // return num of matching keys.
