@@ -148,10 +148,10 @@ class Table : public MappedFile {
   RIME_API string GetSyllableById(int syllable_id);
   RIME_API TableAccessor QueryWords(int syllable_id);
   RIME_API TableAccessor QueryPhrases(const Code& code);
-  RIME_API bool Query(const SyllableGraph& syll_graph,
+  RIME_API bool Query(SyllableGraph syll_graph,
                       size_t start_pos,
                       TableQueryResult* result);
-  RIME_API string GetEntryText(const table::Entry& entry);
+  RIME_API string GetEntryText(const table::Entry& entry) const;
 
   uint32_t dict_file_checksum() const;
 
@@ -170,7 +170,7 @@ class Table : public MappedFile {
   bool BuildEntryList(const DictEntryList& src, List<table::Entry>* dest);
   bool BuildEntry(const DictEntry& dict_entry, table::Entry* entry);
 
-  string GetString(const table::StringType& x);
+  string GetString(const table::StringType& x) const;
   bool AddString(const string& src, table::StringType* dest,
                     double weight);
   bool OnBuildStart();

@@ -283,10 +283,14 @@ void Syllabifier::CheckOverlappedSpellings(SyllableGraph *graph,
 }
 
 void Syllabifier::Transpose(SyllableGraph* graph) {
-  graph->indices.clear();
-  graph->indices.resize(graph->interpreted_length);
-  for (const auto& start : graph->edges) {
-    auto& index(graph->indices[start.first]);
+  graph->Tranpose();
+}
+
+void SyllableGraph::Tranpose() {
+  indices.clear();
+  indices.resize(interpreted_length);
+  for (const auto& start : edges) {
+    auto& index(indices[start.first]);
     for (const auto& end : boost::adaptors::reverse(start.second)) {
       for (const auto& spelling : end.second) {
         SyllableId syll_id = spelling.first;

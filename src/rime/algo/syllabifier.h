@@ -25,10 +25,10 @@ struct EdgeProperties : SpellingProperties {
   bool is_correction = false;
 };
 
-using SpellingMap = map<SyllableId, EdgeProperties>;
+using SpellingMap = hash_map<SyllableId, EdgeProperties>;
 using VertexMap = map<size_t, SpellingType>;
 using EndVertexMap = map<size_t, SpellingMap>;
-using EdgeMap = map<size_t, EndVertexMap>;
+using EdgeMap = hash_map<size_t, EndVertexMap>;
 
 using SpellingPropertiesList = vector<const EdgeProperties*>;
 using SpellingIndex = hash_map<SyllableId, SpellingPropertiesList>;
@@ -41,6 +41,7 @@ struct SyllableGraph {
   VertexMap vertices;
   EdgeMap edges;
   SpellingIndices indices;
+  void Tranpose();
 };
 
 class Syllabifier {

@@ -172,7 +172,15 @@ int main(int argc, char *argv[]) {
   
   // console.ProcessLine("diu");
   // console.ProcessLine("diudiudiu");
-  console.ProcessLine("diudi");
+  // console.ProcessLine("diudi");
+  //console.ProcessLine("d");
+  //console.ProcessLine("d");
+  //console.ProcessLine("di");
+  //console.ProcessLine("diu");
+  //console.ProcessLine("diu");
+  //console.ProcessLine("diudiudiudiu");
+  console.ProcessLine("diuneiloumouhai");
+  //console.ProcessLine("diudiudiu");
   /*
   console.ProcessLine("diu");
   console.ProcessLine("diunei");

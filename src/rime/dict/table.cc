@@ -48,7 +48,13 @@ SyllableId IndexCode::pop_back() {
 
 void IndexCode::push_back(SyllableId syllable_id) {
   assert(size_ < max_size());
-  return (*this)[size_++] = syllable_id;
+  (*this)[size_++] = syllable_id;
+}
+
+void IndexCode::safe_push_back(SyllableId syllable_id) {
+  if (size_ >= max_size()) return;
+  else
+    push_back(syllable_id);
 }
 
 size_t IndexCode::size() const {
@@ -287,7 +293,7 @@ TableAccessor TableQuery::Access(SyllableId syllable_id,
 //   return CopyString(src, &dest->str());
 // }
 
-string Table::GetString(const table::StringType& x) {
+string Table::GetString(const table::StringType& x) const {
   return string_table_->GetString(x.str_id());
 }
 
@@ -652,24 +658,140 @@ size_t longest_common_prefix_len(const string& a, const string& b) {
   return first_mismatch.first - a_begin_it;
 }
 
-bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
+static an<SyllableGraph> prev_graph;
+
+struct EdgeDfsNode {
+  size_t cur_pos = 0;
+  IndexCode path;
+  bool has_added_first_new_node_in_path = false;
+};
+
+bool Table::Query(SyllableGraph syll_graph, size_t start_pos,
                   TableQueryResult* result) {
   if (!result ||
       !index_ ||
       start_pos >= syll_graph.interpreted_length)
     return false;
   
-  LOG(ERROR) << "Query: " << syll_graph.input;
-  
-  result->clear();
-  
   std::queue<QueryNode> q;
-  TableQuery initial_state(index_);
-  q.push({start_pos, initial_state});
+  
+  if (//false &&
+      prev_graph) {
+    LOG(ERROR) << "UFO Query: " << syll_graph.input << " Prev query: " << prev_graph->input;
+    
+    const EdgeMap& prev_edges = prev_graph->edges;
+    const EdgeMap& cur_edges = syll_graph.edges;
+    EdgeMap new_edges;
+    
+    std::queue<EdgeDfsNode> dfs;
+    dfs.push({0, IndexCode(), false});
+    
+    while (!dfs.empty()) {
+      const auto dfs_node = std::move(dfs.front());
+      dfs.pop();
+      //LOG(ERROR) << " UFO DFS " << index_code_to_string(this, dfs_node.path);
+      
+      const size_t& cur_pos = dfs_node.cur_pos;
+      const auto cur_outgoing_vertices_it = cur_edges.find(cur_pos);
+      
+      if (cur_outgoing_vertices_it == cur_edges.end()) continue;
+      const EndVertexMap& cur_outgoing_vertices = cur_outgoing_vertices_it->second;
+      
+      const auto prev_outgoing_vertices_it = prev_edges.find(cur_pos);
+      bool no_prev_outgoing_vertics = prev_outgoing_vertices_it == prev_edges.end();
+      
+      for (const auto& cur_outgoing_vertex : cur_outgoing_vertices) {
+        const size_t& end_pos = cur_outgoing_vertex.first;
+        const SpellingMap& spellings = cur_outgoing_vertex.second;
+        
+        bool no_prev_outgoing_vertex = no_prev_outgoing_vertics;
+        if (!no_prev_outgoing_vertex) {
+          // If there are prev outgoing vertices, make sure there are edges ending at the same end_pos.
+          const EndVertexMap& prev_outgoing_vertices = prev_outgoing_vertices_it->second;
+          const auto prev_outgoing_vertex_it = prev_outgoing_vertices.find(end_pos);
+          no_prev_outgoing_vertex = no_prev_outgoing_vertex || prev_outgoing_vertex_it == prev_outgoing_vertices.end();
+        }
+        
+        bool should_add_initial_vertex = false;
+        for (const auto& spelling : spellings) {
+          const SyllableId& syllable_id = spelling.first;
+          
+          bool is_new_edge = false;
+          if (no_prev_outgoing_vertex) {
+            is_new_edge = true;
+          } else {
+            const EndVertexMap& prev_outgoing_vertices = prev_outgoing_vertices_it->second;
+            const auto prev_outgoing_vertex_it = prev_outgoing_vertices.find(end_pos);
+            const SpellingMap& prev_spellings = prev_outgoing_vertex_it->second;
+            
+            is_new_edge = prev_spellings.find(syllable_id) == prev_spellings.end();
+          }
+          
+          if (dfs_node.path.size() < Code::kIndexCodeMaxLength) {
+            IndexCode new_path(dfs_node.path);
+            new_path.safe_push_back(syllable_id);
+            dfs.push({end_pos, new_path, is_new_edge});
+          }
+          
+          if (is_new_edge) {
+            if (!dfs_node.has_added_first_new_node_in_path)
+              should_add_initial_vertex = true;
+            // Add this new edge to the new edges map.
+            new_edges[cur_pos][end_pos][syllable_id] = spelling.second;
+            /*if (syll_graph.input == prev_graph->input) {
+              LOG(ERROR) << "[BUG] new edge(" << cur_pos << "," << end_pos << ")=" << index_code_to_string(this, new_path);
+            } else*/
+            
+            bool is_terminal_index_code = dfs_node.path.size() == Code::kIndexCodeMaxLength;
+
+            if (!is_terminal_index_code) {
+              LOG(ERROR) << "  UFO " << GetSyllableById(syllable_id) << " " << syllable_id << " new edge(" << cur_pos << "," << end_pos << ")=" << index_code_to_string(this, dfs_node.path);
+            } else {
+              LOG(ERROR) << "  UFO " << GetSyllableById(syllable_id) << " " << syllable_id << " T new edge(" << cur_pos << "," << end_pos << ")=" << index_code_to_string(this, dfs_node.path);
+            }
+          }
+        }
+        
+        if (should_add_initial_vertex) {
+          //LOG(ERROR) << "Add path size: " << new_path.size();
+          const IndexCode& path = dfs_node.path;
+          if (path.size() <= 3) {
+            // Add the current node to the initial search set to search new edges.
+            TableQuery initial_state(index_);
+            
+            for (const auto& syllable_id : path)
+              initial_state.Advance(syllable_id);
+            
+            // LOG(ERROR) << "Add new initial node: " << cur_pos << " path: " <<  index_code_to_string(this, path);
+            q.push({cur_pos, initial_state});
+          }
+        }
+      }
+    }
+    prev_graph = New<SyllableGraph>(SyllableGraph(syll_graph));
+    // Create a copy of the new syll_graph
+    // SyllableGraph new_edges_graph(syll_graph);
+    // syll_graph = SyllableGraph(syll_graph);
+    syll_graph.edges = std::move(new_edges);
+    syll_graph.Tranpose();
+    
+    // Assume result is all valid.
+    // result->clear();
+  } else {
+    prev_graph = New<SyllableGraph>(SyllableGraph(syll_graph));
+    LOG(ERROR) << "Query: " << syll_graph.input;
+    
+    result->clear();
+    
+    TableQuery initial_state(index_);
+    q.push({start_pos, initial_state});
+  }
+  
   while (!q.empty()) {
     size_t current_pos = q.front().pos;
     TableQuery query(q.front().table_query);
     q.pop();
+    // LOG(ERROR) << "syll_graph.indices.size: " << current_pos << " " << syll_graph.indices.size();
     if (current_pos >= syll_graph.indices.size()) {
       continue;
     }
@@ -681,18 +803,36 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
       TableAccessor accessor(query.Access(-1));
       if (!accessor.exhausted()) {
         (*result)[current_pos].push_back(accessor);
+        TableAccessor log_accessor(accessor);
+        string log;
+        while (!log_accessor.exhausted()) {
+          log += GetEntryText(*(log_accessor.entry())) + " ";
+          log_accessor.Next();
+        }
+        if (!log.empty())
+          LOG(ERROR) << "  DFS add teminal entry " << log << " " << current_pos;
       }
       continue;
     }
     for (const auto& spellings : index) {
       SyllableId syll_id = spellings.first;
-      LOG(ERROR) << "DFS " << syll_graph.input << " " << index_code_to_string(this, query.index_code_) << " child: " << GetSyllableById(syll_id);
+      // LOG(ERROR) << "DFS " << syll_graph.input << " " << index_code_to_string(this, query.index_code_) << " child: " << GetSyllableById(syll_id);
       for (auto props : spellings.second) {
         TableAccessor accessor(query.Access(syll_id, props->credibility));
         size_t end_pos = props->end_pos;
         if (!accessor.exhausted()) {
           (*result)[end_pos].push_back(accessor);
         }
+        /*
+        TableAccessor log_accessor(accessor);
+        string log;
+        while (!log_accessor.exhausted()) {
+          log += GetEntryText(*(log_accessor.entry())) + " ";
+          log_accessor.Next();
+        }
+        if (!log.empty())
+          LOG(ERROR) << "  DFS add entry " << log << " " << end_pos;
+        */
         if (end_pos < syll_graph.interpreted_length &&
             query.Advance(syll_id, props->credibility)) {
           q.push({end_pos, query});
@@ -704,7 +844,7 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
   return !result->empty();
 }
 
-string Table::GetEntryText(const table::Entry& entry) {
+string Table::GetEntryText(const table::Entry& entry) const {
   return GetString(entry.text);
 }
 

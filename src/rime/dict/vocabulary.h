@@ -18,10 +18,11 @@ using Syllabary = set<string>;
 
 using SyllableId = int32_t;
 
-struct IndexCode: public std::array<SyllableId, 3> {
+struct IndexCode: public std::array<SyllableId, 4> {
   void clear();
   SyllableId pop_back();
   void push_back(SyllableId syllable_id);
+  void safe_push_back(SyllableId syllable_id);
   size_t size() const;
   
   IndexCode::iterator end() {

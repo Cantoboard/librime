@@ -30,7 +30,7 @@ class StringTable {
                          vector<StringId>* result);
   void Predict(const string& query,
                vector<StringId>* result);
-  string GetString(StringId string_id);
+  string GetString(StringId string_id) const;
 
   size_t NumKeys() const;
   size_t BinarySize() const;

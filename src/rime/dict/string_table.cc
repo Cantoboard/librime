@@ -53,7 +53,7 @@ void StringTable::Predict(const string& query,
   }
 }
 
-string StringTable::GetString(StringId string_id) {
+string StringTable::GetString(StringId string_id) const {
   marisa::Agent agent;
   agent.set_query(string_id);
   try {
