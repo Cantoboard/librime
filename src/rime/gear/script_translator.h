@@ -24,6 +24,8 @@ class Poet;
 class UserDictionary;
 struct SyllableGraph;
 
+using WordGraph = map<int, map<int, DictEntryList>>;
+
 class ScriptTranslator : public Translator,
                          public Memory,
                          public TranslatorOptions {
@@ -50,6 +52,10 @@ class ScriptTranslator : public Translator,
   bool enable_correction_ = false;
   the<Corrector> corrector_;
   the<Poet> poet_;
+                           
+   // For resuing previous query result
+   an<SyllableGraph> prev_syllable_graph_;
+   WordGraph query_result_cache_;
 };
 
 }  // namespace rime

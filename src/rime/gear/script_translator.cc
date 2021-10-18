@@ -106,19 +106,22 @@ class ScriptTranslation : public Translation {
                     Corrector* corrector,
                     Poet* poet,
                     const string& input,
-                    size_t start)
+                    size_t start,
+                    an<SyllableGraph> prev_syllable_graph,
+                    WordGraph& query_result_cache)
       : translator_(translator),
         poet_(poet),
         start_(start),
         syllabifier_(New<ScriptSyllabifier>(
             translator, corrector, input, start)),
-        enable_correction_(corrector) {
+        enable_correction_(corrector),
+        prev_syllable_graph_(prev_syllable_graph),
+        query_result_cache_(query_result_cache) {
     set_exhausted(true);
   }
   bool Evaluate(Dictionary* dict, UserDictionary* user_dict);
   virtual bool Next();
   virtual an<Candidate> Peek();
-
  protected:
   bool CheckEmpty();
   bool PreferUserPhrase();
@@ -127,12 +130,18 @@ class ScriptTranslation : public Translation {
   template <class QueryResult>
   void EnrollEntries(map<int, DictEntryList>& entries_by_end_pos,
                      const an<QueryResult>& query_result);
+  void RemoveStaleQueryResults(const SyllableGraph& syllable_graph);
   an<Sentence> MakeSentence(Dictionary* dict, UserDictionary* user_dict);
 
   ScriptTranslator* translator_;
   Poet* poet_;
   size_t start_;
   an<ScriptSyllabifier> syllabifier_;
+  
+  // For resuing previous query result
+  an<SyllableGraph> prev_syllable_graph_;
+  SyllableGraph syllable_graph_;
+  WordGraph& query_result_cache_;
 
   an<DictEntryCollector> phrase_;
   an<UserDictEntryCollector> user_phrase_;
@@ -147,6 +156,8 @@ class ScriptTranslation : public Translation {
   size_t correction_count_ = 0;
 
   bool enable_correction_;
+public:
+  const SyllableGraph& syllable_graph() const { return syllable_graph_; };
 };
 
 // ScriptTranslator implementation
@@ -191,12 +202,18 @@ an<Translation> ScriptTranslator::Query(const string& input,
                                        corrector_.get(),
                                        poet_.get(),
                                        input,
-                                       segment.start);
+                                       segment.start,
+                                       prev_syllable_graph_,
+                                       query_result_cache_);
   if (!result ||
       !result->Evaluate(dict_.get(),
                         enable_user_dict ? user_dict_.get() : NULL)) {
     return nullptr;
   }
+
+  // Make a copy of the current graph. When we run the next query, we will do incremental search.
+  prev_syllable_graph_ = New<SyllableGraph>(result->syllable_graph());
+
   auto deduped = New<DistinctTranslation>(result);
   if (contextual_suggestions_) {
     return poet_->ContextualWeighted(deduped, input, segment.start, this);
@@ -357,9 +374,59 @@ string ScriptSyllabifier::GetOriginalSpelling(const Phrase& cand) const {
 
 // ScriptTranslation implementation
 
+static size_t longest_common_prefix(const string& a, const string& b) {
+  auto a_begin_it = a.cbegin();
+  auto first_mismatch = std::mismatch(a_begin_it, a.cend(), b.cbegin(), b.cend());
+  return first_mismatch.first - a_begin_it;
+}
+
+static bool disable_incremental_search = false;
+
+void ScriptTranslation::RemoveStaleQueryResults(const SyllableGraph& syllable_graph) {
+  size_t cache_valid_len = 0;
+  if (prev_syllable_graph_) {
+    cache_valid_len = longest_common_prefix(syllable_graph.input, prev_syllable_graph_->input);
+  }
+  
+  LOG(ERROR) << "cache_valid_len " << cache_valid_len;
+  
+  if (cache_valid_len == 0 || disable_incremental_search) {
+    query_result_cache_.clear();
+    return;
+  }
+  
+  for (auto it = query_result_cache_.begin(); it != query_result_cache_.end();) {
+    // Remove entries starting after changed input.
+    if (it->first > cache_valid_len) {
+      it = query_result_cache_.erase(it);
+    } else {
+      auto& entries_same_start_pos = it->second;
+      // Remove entry ending after changed input.
+      for (auto entry_it = entries_same_start_pos.begin(); entry_it != entries_same_start_pos.end();) {
+        const int& end_pos = entry_it->first;
+        if (end_pos > cache_valid_len) {
+          entry_it = entries_same_start_pos.erase(entry_it);
+        } else {
+          entry_it++;
+        }
+      }
+      it++;
+    }
+  }
+}
+
 bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
   size_t consumed = syllabifier_->BuildSyllableGraph(*dict->prism());
-  const auto& syllable_graph = syllabifier_->syllable_graph();
+  syllable_graph_ = syllabifier_->syllable_graph();
+  const SyllableGraph& syllable_graph = syllable_graph_;
+  
+  if (prev_syllable_graph_) {
+    LOG(ERROR) << "Query: " << syllable_graph.input << " prev query: " << prev_syllable_graph_->input;
+  } else {
+    LOG(ERROR) << "New query: " << syllable_graph.input;
+  }
+  
+  RemoveStaleQueryResults(syllable_graph);
 
   phrase_ = dict->Lookup(syllable_graph, 0);
   if (user_dict) {
@@ -564,7 +631,8 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
                                              UserDictionary* user_dict) {
   const int kMaxSyllablesForUserPhraseQuery = 5;
   const auto& syllable_graph = syllabifier_->syllable_graph();
-  WordGraph graph;
+  
+  WordGraph& graph = query_result_cache_;
   for (const auto& x : syllable_graph.edges) {
     auto& same_start_pos = graph[x.first];
     if (user_dict) {
