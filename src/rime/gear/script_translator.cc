@@ -394,10 +394,14 @@ void ScriptTranslation::RemoveStaleQueryResults(const SyllableGraph& syllable_gr
     cache_valid_len = longest_common_prefix(syllable_graph.input, prev_syllable_graph_->input);
   }
   
+#ifdef DEBUG
   LOG(ERROR) << "cache_valid_len " << cache_valid_len;
+#endif
   
   if (cache_valid_len == 0 || disable_incremental_search) {
+#ifdef DEBUG
     LOG(ERROR) << "Removing everything";
+#endif
     query_result_cache_.clear();
     prev_phrase_ = nullptr;
     return;
@@ -414,32 +418,24 @@ void ScriptTranslation::RemoveStaleQueryResults(const SyllableGraph& syllable_gr
   for (auto it = query_result_cache_.begin(); it != query_result_cache_.end();) {
     // Remove entries starting after changed input.
     if (it->first > cache_valid_len) {
+#ifdef DEBUG
       LOG(ERROR) << "Removing row " << it->second.begin()->second.front()->text;
+#endif
       it = query_result_cache_.erase(it);
     } else {
       auto& entries_same_start_pos = it->second;
-      bool remove_row = false;
+      it++;
       // Remove entry ending after changed input.
       for (auto entry_it = entries_same_start_pos.begin(); entry_it != entries_same_start_pos.end();) {
         const int& end_pos = entry_it->first;
         if (end_pos > cache_valid_len) {
-          // BUG
-          // e.g. if we search diuleiloumou first
-          // it will populate all results under tree "diuleilou".
-          // then if we search "diuleiloumouhai", LookUpIncremental will not find any new edges. hence not adding new results.
-          // We need to figure out a way to fix this.
-          //LOG(ERROR) << "Removing entry " << entry_it->second.front()->text;
-          //entry_it = entries_same_start_pos.erase(entry_it);
-          remove_row = true;
-          break;
-        }// else {
-        entry_it++;
-        //}
-      }
-      if (remove_row) {
-        it = query_result_cache_.erase(it);
-      } else {
-        it++;
+#ifdef DEBUG
+          LOG(ERROR) << "Removing entry " << entry_it->second.front()->text;
+#endif
+          entry_it = entries_same_start_pos.erase(entry_it);
+        } else {
+          entry_it++;
+        }
       }
     }
   }
@@ -481,46 +477,32 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
     prev_phrase_ = nullptr;
   }
   
+#ifdef DEBUG
   if (prev_syllable_graph_) {
     LOG(ERROR) << "Query: " << syllable_graph.input << " prev query: " << prev_syllable_graph_->input;
   } else {
     LOG(ERROR) << "New query: " << syllable_graph.input;
   }
-  
+#endif
+  /*
   if (!query_result_cache_.empty()) {
     LOG(ERROR) << "FIRST ROW SIZE: " << query_result_cache_.begin()->second.size();
   } else {
     LOG(ERROR) << "EMPTY WORD GRAPH";
-  }
+  }*/
   
   RemoveStaleQueryResults(syllable_graph);
   
-  if (syllable_graph.input == "diuneiloumouhai") {
-    LOG(ERROR) << "debug";
-  }
   phrase_ = dict->LookupIncremental(syllable_graph, prev_syllable_graph_, 0, 0);
   
-  
   if (!disable_incremental_search) {
-    // If LookupIncremental returns nothing, create a new one.
-    /*if (phrase_ == nullptr) {
-      phrase_ = New
-    }*/
     if (phrase_ && prev_phrase_) {
       for (auto it = prev_phrase_->begin(); it != prev_phrase_->end(); ++it) {
-        auto entry_clone = it->second;
-        entry_clone.Reset();
-        (*phrase_)[it->first] = entry_clone;
+        auto& entries_at_end_pos = it->second;
+        entries_at_end_pos.Reset();
+        (*phrase_)[it->first] = entries_at_end_pos;
       }
     }
-    /*
-    if (auto query_result_cache = query_result_cache_.find(0) == query_result_cache_.end() && phrase_) {
-      EnrollEntries(query_result_cache_[0], phrase_);
-      
-      for (auto it = phrase_->begin(); it != phrase_->end(); ++it) {
-        (*phrase_)[it->first].Reset();
-      }
-    }*/
   }
   
   if (user_dict) {
@@ -728,7 +710,7 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
   
   WordGraph& graph = query_result_cache_;
   for (const auto& x : syllable_graph.edges) {
-    bool is_first_search = graph.find(x.first) == graph.end();
+    bool full_search = graph.find(x.first) == graph.end();
     auto& same_start_pos = graph[x.first];
     if (user_dict) {
       EnrollEntries(same_start_pos,
@@ -737,11 +719,9 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
                                       kMaxSyllablesForUserPhraseQuery));
     }
     // merge lookup results
-    if (is_first_search) {
-      LOG(ERROR) << "  MAKE SEN FULL LOOKUP " << x.first;
+    if (full_search) {
       EnrollEntries(same_start_pos, dict->LookupIncremental(syllable_graph, nullptr, x.first, 0));
     } else {
-      LOG(ERROR) << "  MAKE SEN INC LOOKUP " << x.first;
       EnrollEntries(same_start_pos, dict->LookupIncremental(syllable_graph, prev_syllable_graph_, x.first, 0));
     }
   }

@@ -98,6 +98,8 @@ struct Metadata {
 
 }  // namespace table
 
+class Table;
+
 class TableAccessor {
  public:
   TableAccessor() = default;
@@ -117,7 +119,6 @@ class TableAccessor {
   const IndexCode& index_code() const { return index_code_; }
   Code code() const;
   double credibility() const { return credibility_; }
-
  private:
   IndexCode index_code_;
   const table::Entry* entries_ = nullptr;
@@ -125,6 +126,9 @@ class TableAccessor {
   size_t size_ = 0;
   size_t cursor_ = 0;
   double credibility_ = 0.0;
+public:
+  // For debugging
+  string EntriesToString(Table* table) const;
 };
 
 using TableQueryResult = map<int, vector<TableAccessor>>;

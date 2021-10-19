@@ -200,18 +200,15 @@ an<Sentence> Poet::MakeSentenceWithStrategy(const WordGraph& graph,
     if (states.find(start_pos) == states.end())
       continue;
     DLOG(INFO) << "start pos: " << start_pos;
-    DLOG(ERROR) << "start pos: " << start_pos;
     const auto& source_state = states[start_pos];
     const auto update =
         [this, &states, &sv, start_pos, total_length, &preceding_text]
         (const Line& candidate) {
-          DLOG(ERROR) << "BUG: " << sv.first << " " << sv.second.size();
           for (const auto& ev : sv.second) {
             size_t end_pos = ev.first;
             if (start_pos == 0 && end_pos == total_length)
               continue;  // exclude single word from the result
             DLOG(INFO) << "end pos: " << end_pos;
-            DLOG(ERROR) << "end pos: " << end_pos;
             bool is_rear = end_pos == total_length;
             auto& target_state = states[end_pos];
             // extend candidates with dict entries on a valid edge.
@@ -229,9 +226,6 @@ an<Sentence> Poet::MakeSentenceWithStrategy(const WordGraph& graph,
               Line& best = Strategy::BestLineToUpdate(target_state, new_line);
               if (best.empty() || compare_(best, new_line)) {
                 DLOG(INFO) << "updated line ending at " << end_pos
-                           << " with text: ..." << new_line.last_word()
-                           << " weight: " << new_line.weight;
-                DLOG(ERROR) << "updated line ending at " << end_pos
                            << " with text: ..." << new_line.last_word()
                            << " weight: " << new_line.weight;
                 best = new_line;

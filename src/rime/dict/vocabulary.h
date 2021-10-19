@@ -18,19 +18,19 @@ using Syllabary = set<string>;
 
 using SyllableId = int32_t;
 
+class Table;
+
 struct IndexCode: public std::array<SyllableId, 3> {
   void clear();
   SyllableId pop_back();
   void push_back(SyllableId syllable_id);
   size_t size() const;
   
-  IndexCode::iterator end() {
-    return begin() + size_;
-  }
+  iterator end();
+  const_iterator end() const;
+  bool full() const;
   
-  IndexCode::const_iterator end() const {
-    return begin() + size_;
-  }
+  string ToString(Table* table) const;
 private:
   size_t size_ = 0;
 };
