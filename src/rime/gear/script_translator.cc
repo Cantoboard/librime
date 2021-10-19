@@ -445,6 +445,32 @@ void ScriptTranslation::RemoveStaleQueryResults(const SyllableGraph& syllable_gr
   }
 }
 
+namespace dictionary {
+
+struct Chunk {
+  Table* table = nullptr;
+  Code code;
+  const table::Entry* entries = nullptr;
+  size_t size = 0;
+  size_t cursor = 0;
+  string remaining_code;  // for predictive queries
+  double credibility = 0.0;
+
+  Chunk() = default;
+  Chunk(Table* t, const Code& c, const table::Entry* e, double cr = 0.0)
+      : table(t), code(c), entries(e), size(1), cursor(0), credibility(cr) {}
+  Chunk(Table* t, const TableAccessor& a, double cr = 0.0)
+      : Chunk(t, a, string(), cr) {}
+  Chunk(Table* t, const TableAccessor& a, const string& r, double cr = 0.0)
+      : table(t), code(a.index_code()), entries(a.entry()),
+        size(a.remaining()), cursor(0), remaining_code(r), credibility(cr) {}
+};
+
+struct QueryResult {
+  vector<Chunk> chunks;
+};
+}
+
 bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
   size_t consumed = syllabifier_->BuildSyllableGraph(*dict->prism());
   syllable_graph_ = syllabifier_->syllable_graph();
@@ -469,7 +495,11 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
   
   RemoveStaleQueryResults(syllable_graph);
   
+  if (syllable_graph.input == "diuneiloumouhai") {
+    LOG(ERROR) << "debug";
+  }
   phrase_ = dict->LookupIncremental(syllable_graph, prev_syllable_graph_, 0, 0);
+  
   
   if (!disable_incremental_search) {
     // If LookupIncremental returns nothing, create a new one.
@@ -478,8 +508,9 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
     }*/
     if (phrase_ && prev_phrase_) {
       for (auto it = prev_phrase_->begin(); it != prev_phrase_->end(); ++it) {
-        (*phrase_)[it->first] = it->second;
-        (*phrase_)[it->first].Reset();
+        auto entry_clone = it->second;
+        entry_clone.Reset();
+        (*phrase_)[it->first] = entry_clone;
       }
     }
     /*

@@ -651,6 +651,7 @@ struct EdgeDfsNode {
   size_t cur_pos = 0;
   IndexCode path;
   bool has_added_first_new_node_in_path = false;
+  size_t table_accessor_pos = cur_pos;
 };
 
 static void transpose_graph(size_t interpreted_length, const EdgeMap& edges, SpellingIndices& indices) {
@@ -667,6 +668,12 @@ static void transpose_graph(size_t interpreted_length, const EdgeMap& edges, Spe
   }
 }
 
+static size_t longest_common_prefix(const string& a, const string& b) {
+  auto a_begin_it = a.cbegin();
+  auto first_mismatch = std::mismatch(a_begin_it, a.cend(), b.cbegin(), b.cend());
+  return first_mismatch.first - a_begin_it;
+}
+
 bool Table::Query(const SyllableGraph& syll_graph,
                   an<SyllableGraph> prev_graph,
                   size_t start_pos,
@@ -678,6 +685,10 @@ bool Table::Query(const SyllableGraph& syll_graph,
   
   result->clear();
   std::queue<QueryNode> q;
+  
+  size_t max_reusable_index = 0;
+  if (prev_graph)
+    longest_common_prefix(prev_graph->input, syll_graph.input);
   
   bool use_new_graph_indices = false;
   SpellingIndices new_indices;
@@ -712,19 +723,20 @@ bool Table::Query(const SyllableGraph& syll_graph,
         const size_t& end_pos = cur_outgoing_vertex.first;
         const SpellingMap& spellings = cur_outgoing_vertex.second;
         
+        /*
         bool no_prev_outgoing_vertex = no_prev_outgoing_vertics;
         if (!no_prev_outgoing_vertex) {
           // If there are prev outgoing vertices, make sure there are edges ending at the same end_pos.
           const EndVertexMap& prev_outgoing_vertices = prev_outgoing_vertices_it->second;
           const auto prev_outgoing_vertex_it = prev_outgoing_vertices.find(end_pos);
           no_prev_outgoing_vertex = no_prev_outgoing_vertex || prev_outgoing_vertex_it == prev_outgoing_vertices.end();
-        }
+        }*/
         
         for (const auto& spelling : spellings) {
           const SyllableId& syllable_id = spelling.first;
           
-          bool is_new_edge = false;
-          if (no_prev_outgoing_vertex) {
+          bool is_new_edge = end_pos > max_reusable_index;
+          /*if (no_prev_outgoing_vertex) {
             is_new_edge = true;
           } else {
             const EndVertexMap& prev_outgoing_vertices = prev_outgoing_vertices_it->second;
@@ -732,13 +744,14 @@ bool Table::Query(const SyllableGraph& syll_graph,
             const SpellingMap& prev_spellings = prev_outgoing_vertex_it->second;
             
             is_new_edge = prev_spellings.find(syllable_id) == prev_spellings.end();
-          }
+          }*/
           
           {
             IndexCode new_path(dfs_node.path);
-            if (dfs_node.path.size() < Code::kIndexCodeMaxLength)
+            bool is_below_level_4 = dfs_node.path.size() < Code::kIndexCodeMaxLength;
+            if (is_below_level_4)
               new_path.push_back(syllable_id);
-            dfs.push({end_pos, new_path, is_new_edge});
+            dfs.push({end_pos, new_path, is_new_edge, is_below_level_4 ? end_pos : cur_pos});
           }
           
           if (is_new_edge) {
@@ -782,7 +795,7 @@ bool Table::Query(const SyllableGraph& syll_graph,
           if (!has_such_entry) continue;
           
           LOG(ERROR) << " Add new initial node: " << cur_pos << " path: " <<  index_code_to_string(this, path) << " phyiscal path " << index_code_to_string(this, initial_state.index_code_);
-          q.push({cur_pos, initial_state});
+          q.push({dfs_node.table_accessor_pos, initial_state});
         }
       }
     }
@@ -813,10 +826,20 @@ bool Table::Query(const SyllableGraph& syll_graph,
       continue;
     }
     LOG(ERROR) << "DFS: " <<  current_pos << " " << index_code_to_string(this, query.index_code_);
+    if (index_code_to_string(this, query.index_code_) == "diu nei lou " && current_pos == 12) {
+      LOG(ERROR) << " debug";
+    }
     auto& index = indices[current_pos];
     if (query.level() == Code::kIndexCodeMaxLength) {
       TableAccessor accessor(query.Access(-1));
       if (!accessor.exhausted()) {
+        TableAccessor log_accessor(accessor);
+        string log;
+        while (!log_accessor.exhausted()) {
+          log += GetEntryText(*(log_accessor.entry())) + " ";
+          log_accessor.Next();
+        }
+        LOG(ERROR) << "  DFS add entry " << log << " " << current_pos;
         (*result)[current_pos].push_back(accessor);
       }
       continue;

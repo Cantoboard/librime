@@ -173,14 +173,17 @@ int main(int argc, char *argv[]) {
   
   //console.ProcessLine("diu");
   //console.ProcessLine("diu");
-  /*console.ProcessLine("di");
-  console.ProcessLine("diunei");
+  //console.ProcessLine("di");
+  /*console.ProcessLine("diunei");
   console.ProcessLine("diu");
-  console.ProcessLine("di");*/
+  console.ProcessLine("di");
   
   console.ProcessLine("diuneiloumouhai");
-  //console.ProcessLine("diuneilaa");
+  console.ProcessLine("diuneilaa");*/
   //console.ProcessLine("diulaasing");
+  console.ProcessLine("diulaasing");
+  console.ProcessLine("siksilaanei");
+
   
   /*
   profile(console, "diulaamaa");

@@ -45,8 +45,10 @@ class DictEntryIterator : public DictEntryFilterBinder {
  protected:
   bool FindNextEntry();
 
- private:
+public:
   an<dictionary::QueryResult> query_result_;
+private:
+
   size_t chunk_index_ = 0;
   an<DictEntry> entry_ = nullptr;
   size_t entry_count_ = 0;
