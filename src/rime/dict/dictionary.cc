@@ -199,11 +199,11 @@ Dictionary::~Dictionary() {
 static void lookup_table(Table* table,
                          DictEntryCollector* collector,
                          const SyllableGraph& syllable_graph,
-                         an<SyllableGraph> prev_syllable_graph,
                          size_t start_pos,
+                         size_t incremental_search_from_pos,
                          double initial_credibility) {
   TableQueryResult result;
-  if (!table->Query(syllable_graph, prev_syllable_graph, start_pos, &result)) {
+  if (!table->Query(syllable_graph, start_pos, incremental_search_from_pos, &result)) {
     return;
   }
   // copy result
@@ -239,7 +239,7 @@ Dictionary::Lookup(const SyllableGraph& syllable_graph,
     if (!table->IsOpen())
       continue;
     lookup_table(table.get(), collector.get(),
-                 syllable_graph, nullptr, start_pos, initial_credibility);
+                 syllable_graph, start_pos, 0, initial_credibility);
   }
   if (collector->empty())
     return nullptr;
@@ -252,8 +252,8 @@ Dictionary::Lookup(const SyllableGraph& syllable_graph,
 
 an<DictEntryCollector>
 Dictionary::LookupIncremental(const SyllableGraph& syllable_graph,
-                              const an<SyllableGraph> prev_syllable_graph,
                               size_t start_pos,
+                              size_t incremental_search_from_pos,
                               double initial_credibility) {
   if (!loaded())
     return nullptr;
@@ -262,7 +262,7 @@ Dictionary::LookupIncremental(const SyllableGraph& syllable_graph,
     if (!table->IsOpen())
       continue;
     lookup_table(table.get(), collector.get(),
-                 syllable_graph, prev_syllable_graph, start_pos, initial_credibility);
+                 syllable_graph, start_pos, incremental_search_from_pos, initial_credibility);
   }
   // sort each group of equal code length
   for (auto& v : *collector) {

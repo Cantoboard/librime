@@ -79,9 +79,9 @@ class Dictionary : public Class<Dictionary, const Ticket&> {
                                          double initial_credibility = 0.0);
   
   an<DictEntryCollector> LookupIncremental(const SyllableGraph& syllable_graph,
-                                           an<SyllableGraph> prev_syllable_graph,
                                            size_t start_pos,
-                                           double initial_credibility);
+                                           size_t incremental_search_from_pos,
+                                           double initial_credibilit);
   
   // if predictive is true, do an expand search with limit,
   // otherwise do an exact match.

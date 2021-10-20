@@ -142,6 +142,8 @@ static void profile(RimeConsole& console, string input) {
   std::cerr << input.length() << " " << counter / retry_count << "ms " << counter / retry_count / input.length() << std::endl;
 }
 
+extern long debug_counter;
+
 // program entry
 int main(int argc, char *argv[]) {
   // initialize la Rime
@@ -153,6 +155,7 @@ int main(int argc, char *argv[]) {
   deployer.user_data_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton";
   deployer.staging_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton/build";*/
   chdir("/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton_no_tone");
+  chdir("/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton");
   InstallationUpdate installation;
   if (!installation.Run(&deployer)) {
     std::cerr << "failed to initialize installation." << std::endl;
@@ -171,6 +174,31 @@ int main(int argc, char *argv[]) {
   bool interactive = argc > 1 && !strcmp(argv[1], "-i");
   console.set_interactive(interactive);
   
+  //console.ProcessLine("siksidiunei");
+  //return 0;
+  
+  // console.ProcessLine("neijigaa");
+  console.ProcessLine("neijigaahoutoungo");
+  return 0;
+  
+  console.ProcessLine("diulaasing");
+  //return 0;
+  //console.ProcessLine("sssssssssssss");
+  //return 0;
+  
+  console.ProcessLine("diuneilaa");
+  console.ProcessLine("diulaasing");
+  console.ProcessLine("neijigaa");
+  
+
+  console.ProcessLine("neijigaahoutoungo");
+  console.ProcessLine("gamcipukgaailiu");
+  console.ProcessLine("neigojewaaizoaa");
+  console.ProcessLine("neijigahaibindou");
+  console.ProcessLine("haibindou");
+
+  console.ProcessLine("diuneiloumouhai");
+
   console.ProcessLine("diu");
   console.ProcessLine("diu");
   console.ProcessLine("di");
@@ -194,10 +222,17 @@ int main(int argc, char *argv[]) {
   console.ProcessLine("siksidiunei");
   console.ProcessLine("");
   console.ProcessLine("ngosingjatgaaugaauzan");
-  //console.ProcessLine("gfhg");
+  console.ProcessLine("gfhg");
+  console.ProcessLine("gfhgsdgm");
+  
+  //console.ProcessLine("ssssssssssss");
+  //LOG(ERROR) << "BUG " << debug_counter;
+
+  //profile(console, "diulaamaa");
+  //profile(console, "gfhgsdgm");
+  //console.ProcessLine("ssssssssssss");
+
   /*
-  profile(console, "diulaamaa");
-  profile(console, "gfhgsdgm");
   string s = "s";
   for (int i = 0; i < 16; ++i) {
     profile(console, s);

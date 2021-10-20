@@ -25,6 +25,9 @@
 #include <rime/gear/script_translator.h>
 #include <rime/gear/translator_commons.h>
 
+// #define DEBUG
+
+bool disable_incremental_search = false;
 
 //static const char* quote_left = "\xef\xbc\x88";
 //static const char* quote_right = "\xef\xbc\x89";
@@ -213,6 +216,8 @@ an<Translation> ScriptTranslator::Query(const string& input,
   if (!result ||
       !result->Evaluate(dict_.get(),
                         enable_user_dict ? user_dict_.get() : NULL)) {
+    prev_syllable_graph_ = New<SyllableGraph>(result->syllable_graph());
+    prev_phrase_ = result->phrase_;
     return nullptr;
   }
 
@@ -386,8 +391,6 @@ static size_t longest_common_prefix(const string& a, const string& b) {
   return first_mismatch.first - a_begin_it;
 }
 
-bool disable_incremental_search = false;
-
 void ScriptTranslation::RemoveStaleQueryResults(const SyllableGraph& syllable_graph) {
   size_t cache_valid_len = 0;
   if (prev_syllable_graph_) {
@@ -406,36 +409,50 @@ void ScriptTranslation::RemoveStaleQueryResults(const SyllableGraph& syllable_gr
     prev_phrase_ = nullptr;
     return;
   }
-  
+  /*
   for (auto it = prev_phrase_->begin(); it != prev_phrase_->end();) {
     if (it->first > cache_valid_len) {
       it = prev_phrase_->erase(it);
     } else {
       it++;
     }
-  }
+  }*/
   
   for (auto it = query_result_cache_.begin(); it != query_result_cache_.end();) {
     // Remove entries starting after changed input.
     if (it->first > cache_valid_len) {
 #ifdef DEBUG
-      LOG(ERROR) << "Removing row " << it->second.begin()->second.front()->text;
+      // LOG(ERROR) << "Removing row?" << it->second.begin()->second.front()->text;
+      LOG(ERROR) << "Removing row " << it->first;
 #endif
       it = query_result_cache_.erase(it);
     } else {
+      bool remove_row = false;
       auto& entries_same_start_pos = it->second;
-      it++;
       // Remove entry ending after changed input.
       for (auto entry_it = entries_same_start_pos.begin(); entry_it != entries_same_start_pos.end();) {
         const int& end_pos = entry_it->first;
         if (end_pos > cache_valid_len) {
 #ifdef DEBUG
-          LOG(ERROR) << "Removing entry " << entry_it->second.front()->text;
+          //LOG(ERROR) << "Removing entry?" << entry_it->second.front()->text;
+          LOG(ERROR) << "Offending entry endpos=" << end_pos << " cache_valid_len=" << cache_valid_len;
 #endif
-          entry_it = entries_same_start_pos.erase(entry_it);
+          // FIX ME remove the whole row instead of just the entry.
+          //entry_it = entries_same_start_pos.erase(entry_it);
+          remove_row = true;
+          break;
         } else {
           entry_it++;
         }
+      }
+      if (remove_row) {
+        #ifdef DEBUG
+              // LOG(ERROR) << "Removing row?" << it->second.begin()->second.front()->text;
+              LOG(ERROR) << "Removing row due to entry " << it->first;
+        #endif
+        it = query_result_cache_.erase(it);
+      } else {
+        it++;
       }
     }
   }
@@ -492,9 +509,13 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
   }*/
   
   RemoveStaleQueryResults(syllable_graph);
+  size_t incremental_search_from = 0;
+  if (prev_phrase_ && !prev_phrase_->empty()) incremental_search_from = prev_phrase_->rbegin()->first;
+  // phrase_ = dict->LookupIncremental(syllable_graph, 0, incremental_search_from, 0);
   
-  phrase_ = dict->LookupIncremental(syllable_graph, prev_syllable_graph_, 0, 0);
+  phrase_ = dict->Lookup(syllable_graph, 0);
   
+  /*
   if (!disable_incremental_search) {
     if (phrase_ && prev_phrase_) {
       for (auto it = prev_phrase_->begin(); it != prev_phrase_->end(); ++it) {
@@ -503,7 +524,20 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
         (*phrase_)[it->first] = entries_at_end_pos;
       }
     }
-  }
+  }*/
+  
+  /*
+  LOG(ERROR) << "query.size=" << phrase_->size();
+  for (auto it = phrase_->begin(); it != phrase_->end(); ++it) {
+    auto& query_result_ = it->second.query_result_;
+    if (query_result_) {
+      LOG(ERROR) << "query[" << it->first << "].size=" << it->second.query_result_->chunks.size();
+    } else {
+      LOG(ERROR) << "query[" << it->first << "].size=" << 0;
+    }
+  }*/
+  
+  // LOG(ERROR) << "Copying " << it->first << " " <<
   
   if (user_dict) {
     user_phrase_ = user_dict->Lookup(syllable_graph, 0);
@@ -696,6 +730,7 @@ void ScriptTranslation::EnrollEntries(
       while (homophones.size() < translator_->max_homophones() &&
              !y.second.exhausted()) {
         homophones.push_back(y.second.Peek());
+        // LOG(ERROR) << "FUCK " << y.first << " " << y.second.Peek()->text;
         if (!y.second.Next())
           break;
       }
@@ -710,7 +745,8 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
   
   WordGraph& graph = query_result_cache_;
   for (const auto& x : syllable_graph.edges) {
-    bool full_search = graph.find(x.first) == graph.end();
+    auto cached_words_it = graph.find(x.first);
+    bool full_search = cached_words_it == graph.end();
     auto& same_start_pos = graph[x.first];
     if (user_dict) {
       EnrollEntries(same_start_pos,
@@ -720,9 +756,19 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
     }
     // merge lookup results
     if (full_search) {
-      EnrollEntries(same_start_pos, dict->LookupIncremental(syllable_graph, nullptr, x.first, 0));
+#ifdef DEBUG
+      LOG(ERROR) << "Lookup Full " << syllable_graph.input.substr(x.first);
+#endif
+      EnrollEntries(same_start_pos, dict->Lookup(syllable_graph, x.first));
     } else {
-      EnrollEntries(same_start_pos, dict->LookupIncremental(syllable_graph, prev_syllable_graph_, x.first, 0));
+#ifdef DEBUG
+      LOG(ERROR) << "Lookup Incremental " << syllable_graph.input.substr(x.first);
+#endif
+      size_t inc_search_from = 0;
+      if (!cached_words_it->second.empty()) {
+        inc_search_from = cached_words_it->second.rbegin()->first;
+      }
+      EnrollEntries(same_start_pos, dict->LookupIncremental(syllable_graph, x.first, inc_search_from, 0));
     }
   }
   if (auto sentence =

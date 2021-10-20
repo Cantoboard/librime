@@ -233,7 +233,7 @@ bool DictCompiler::BuildTable(int table_index,
 
   collector.Configure(settings);
   collector.Collect(dict_files);
-  if (options_ & kDump) {
+  if (true || options_ & kDump) {
     fs::path dump_path(table->file_name());
     dump_path.replace_extension(".txt");
     collector.Dump(dump_path.string());
