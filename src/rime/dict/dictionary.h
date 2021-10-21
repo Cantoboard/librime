@@ -61,6 +61,7 @@ class Schema;
 class EditDistanceCorrector;
 struct SyllableGraph;
 struct Ticket;
+struct SearchContext;
 
 class Dictionary : public Class<Dictionary, const Ticket&> {
  public:
@@ -80,7 +81,7 @@ class Dictionary : public Class<Dictionary, const Ticket&> {
   
   an<DictEntryCollector> LookupIncremental(const SyllableGraph& syllable_graph,
                                            size_t start_pos,
-                                           size_t incremental_search_from_pos,
+                                           SearchContext* search_context,
                                            double initial_credibilit);
   
   // if predictive is true, do an expand search with limit,

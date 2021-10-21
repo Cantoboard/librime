@@ -51,6 +51,7 @@ class Code : public vector<SyllableId> {
   void CreateIndex(Code* index_code);
 
   string ToString() const;
+  string ToString(Table* table) const;
 };
 
 struct DictEntry {

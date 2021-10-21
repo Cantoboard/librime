@@ -135,6 +135,7 @@ using TableQueryResult = map<int, vector<TableAccessor>>;
 
 struct SyllableGraph;
 class TableQuery;
+class SearchContext;
 
 class Table : public MappedFile {
  public:
@@ -154,7 +155,7 @@ class Table : public MappedFile {
   RIME_API TableAccessor QueryPhrases(const Code& code);
   RIME_API bool Query(const SyllableGraph& syll_graph,
                       size_t start_pos,
-                      size_t incremental_search_from_pos,
+                      SearchContext* search_context,
                       TableQueryResult* result);
   RIME_API string GetEntryText(const table::Entry& entry);
 

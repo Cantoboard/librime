@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
   deployer.user_data_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton";
   deployer.staging_dir = "/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton/build";*/
   chdir("/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton_no_tone");
-  chdir("/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton");
+  // chdir("/Users/alexman/workspace/personal/librime-build-special-build/test_ground_canton");
   InstallationUpdate installation;
   if (!installation.Run(&deployer)) {
     std::cerr << "failed to initialize installation." << std::endl;
@@ -178,8 +178,19 @@ int main(int argc, char *argv[]) {
   //return 0;
   
   // console.ProcessLine("neijigaa");
+  //console.ProcessLine("diuneiloumouhai");
+  //console.ProcessLine("neijigaahoutoungo");
   console.ProcessLine("neijigaahoutoungo");
   return 0;
+  console.ProcessLine("neijigaa");
+  console.ProcessLine("diulaasing");
+  // return 0;
+  console.ProcessLine("neijigaa");
+  console.ProcessLine("neijigaahou");
+  console.ProcessLine("neijigaahoutoungo");
+  
+  console.ProcessLine("diulaasing");
+  //return 0;
   
   console.ProcessLine("diulaasing");
   //return 0;

@@ -14,7 +14,8 @@
 #include <rime/dict/table.h>
 #include <boost/range/adaptor/reversed.hpp>
 
-#define DEBUG
+ #define DEBUG
+#define DFS_DEBUG
 
 long debug_counter = 0;
 
@@ -659,6 +660,7 @@ TableAccessor Table::QueryPhrases(const Code& code) {
   return query.Access(-1);
 }
 
+/*
 struct QueryNode {
   size_t pos;
   TableQuery table_query;
@@ -666,29 +668,27 @@ struct QueryNode {
   QueryNode(const size_t& pos, const TableQuery& table_query) : pos(pos), table_query(table_query) {
   }
 };
+*/
+using QueryNode = pair<size_t, TableQuery>;
+using SearchStateGraph = map</* start pos*/ int, map</*end pos */ int, vector<QueryNode>>>;
 
-// using QueryNode = pair<size_t, TableQuery>;
-
-struct EdgeDfsNode {
-  size_t cur_pos = 0;
-  IndexCode index_code;
-  bool has_added_first_new_node_in_path = false;
-  size_t table_accessor_pos = cur_pos;
-  string code;
+struct SearchState {
+  SearchStateGraph graph;
 };
 
-static void transpose_graph(size_t interpreted_length, const EdgeMap& edges, SpellingIndices& indices) {
-  indices.clear();
-  indices.resize(interpreted_length);
-  for (const auto& start : edges) {
-    auto& index(indices[start.first]);
-    for (const auto& end : boost::adaptors::reverse(start.second)) {
-      for (const auto& spelling : end.second) {
-        SyllableId syll_id = spelling.first;
-        index[syll_id].push_back(&spelling.second);
-      }
+string Code::ToString(Table* table) const {
+  std::stringstream stream;
+  bool first = true;
+  for (SyllableId syllable_id : *this) {
+    if (first) {
+      first = false;
     }
+    else {
+      stream << ",";
+    }
+    stream << table->GetSyllableById(syllable_id);
   }
+  return stream.str();
 }
 
 static size_t longest_common_prefix(const string& a, const string& b) {
@@ -699,7 +699,7 @@ static size_t longest_common_prefix(const string& a, const string& b) {
 
 bool Table::Query(const SyllableGraph& syll_graph,
                   size_t start_pos,
-                  size_t incremental_search_from_pos,
+                  SearchContext* search_context,
                   TableQueryResult* result) {
   if (!result ||
       !index_ ||
@@ -709,114 +709,57 @@ bool Table::Query(const SyllableGraph& syll_graph,
   result->clear();
   std::queue<QueryNode> q;
   
-  if (incremental_search_from_pos > 0) {
+  size_t incremental_search_from_pos = 0;
+  if (search_context && search_context->prev_search_state && search_context->incremental_search_from_pos > 0) {
 #ifdef DEBUG
-    LOG(ERROR) << "UFO Query: " << syll_graph.input.substr(start_pos) << " Prev query: " << syll_graph.input.substr(start_pos, incremental_search_from_pos - start_pos);
+    if (incremental_search_from_pos == 0) {
+      LOG(ERROR) << "New query: " << search_context->input.substr(start_pos);
+    } else {
+      LOG(ERROR) << "Query: " << search_context->input.substr(start_pos) << " Prev: " << search_context->prev_input.substr(start_pos) << incremental_search_from_pos;
+    }
 #endif
-    const EdgeMap& cur_edges = syll_graph.edges;
-    // EdgeMap new_edges;
+    incremental_search_from_pos = search_context->incremental_search_from_pos;
+    SearchStateGraph& initial_states = search_context->prev_search_state->graph;
     
-    std::queue<EdgeDfsNode> dfs;
-    dfs.push({start_pos, IndexCode(), false});
+    SearchContext::RemoveStateEntriesFromGraph(initial_states, incremental_search_from_pos);
     
-    while (!dfs.empty()) {
-      const auto dfs_node = std::move(dfs.front());
-      dfs.pop();
-#ifdef DEBUG
-      LOG(ERROR) << " UFO DFS " << dfs_node.index_code.ToString(this) << " Full path " << dfs_node.code;
-      
-      if (dfs_node.index_code.ToString(this) == "nei1 ji1 gaa1") {
-        LOG(ERROR) << " DEBUG";
-      }
-#endif
-      const size_t& cur_pos = dfs_node.cur_pos;
-      const auto cur_outgoing_vertices_it = cur_edges.find(cur_pos);
-      
-      if (cur_outgoing_vertices_it == cur_edges.end()) continue;
-      const EndVertexMap& cur_outgoing_vertices = cur_outgoing_vertices_it->second;
-      
-      bool should_add_initial_vertex = false;
-      for (const auto& cur_outgoing_vertex : cur_outgoing_vertices) {
-        const size_t& end_pos = cur_outgoing_vertex.first;
-        const SpellingMap& spellings = cur_outgoing_vertex.second;
-        
-        if (dfs_node.index_code.full()) {
-          if (syll_graph.indices.size() > incremental_search_from_pos) {
-            should_add_initial_vertex = true;
-          }
-          break;
-        }
-        
-        for (const auto& spelling : spellings) {
-          const SyllableId& syllable_id = spelling.first;
-          
-          bool is_new_edge = end_pos > incremental_search_from_pos;
-          
-          string code = dfs_node.code + " " + GetSyllableById(syllable_id);
-          
-          if (is_new_edge) {
-            if (!dfs_node.has_added_first_new_node_in_path)
-              should_add_initial_vertex = true;
-            // Add this new edge to the new edges map.
-#ifdef DEBUG
-            LOG(ERROR) << "  UFO new syllable_id=" << syllable_id << " new edge(" << cur_pos << "," << end_pos << ")=" << dfs_node.index_code.ToString(this) << "/" << GetSyllableById(syllable_id) << " " << code;
-            // LOG(ERROR) << "  UFO new syllable_id=" << syllable_id << " new edge(" << cur_pos << "," << end_pos << ")=" << dfs_node.index_code.ToString(this) << "/" << GetSyllableById(syllable_id);
-#endif
-          } else {
-            // TODO avoid copying path.
-            IndexCode new_path(dfs_node.index_code);
-            bool is_below_level_4 = !dfs_node.index_code.full();
-            if (is_below_level_4) {
-              new_path.push_back(syllable_id);
-              
-              // dfs.push({end_pos, std::move(new_path), false, is_below_level_4 ? end_pos : cur_pos});
-              
-              dfs.push({end_pos, std::move(new_path), is_new_edge, is_below_level_4 ? end_pos : cur_pos, code});
-            }
-            //if (end_pos != incremental_search_from_pos) {
-            //}
-            
-          }
-        }
-      }
-      
-      if (should_add_initial_vertex) {
-        const IndexCode& path = dfs_node.index_code;
-        // Add the current node to the initial search set to search new edges.
-        TableQuery initial_state(index_);
-        
-        bool has_such_entry_in_dict = true;
-        for (const auto& syllable_id : path) {
-          has_such_entry_in_dict = initial_state.Advance(syllable_id);
-        }
-        
-        if (has_such_entry_in_dict) {
-#ifdef DEBUG
-          LOG(ERROR) << " Add new initial node: " << cur_pos << " path: " <<  dfs_node.index_code.ToString(this) << " phyiscal path " << initial_state.index_code_.ToString(this);
-#endif
-          q.push({dfs_node.table_accessor_pos, initial_state});
+    //LOG(ERROR) << "incremental_search_from_pos " << incremental_search_from_pos << " " << search_context->prev_words.empty() ? 0 : search_context->prev_words.rbegin()->first;
+    //LOG(ERROR) << "initial_states " << initial_states.size();
+    
+    auto initial_states_it_start_at_it = initial_states.find(start_pos);
+    if (initial_states_it_start_at_it != initial_states.end()) {
+      const auto& initial_states_it_start_at = initial_states_it_start_at_it->second;
+      for(auto initial_states_it = initial_states_it_start_at.begin(); initial_states_it != initial_states_it_start_at.end(); initial_states_it++) {
+        const auto& list = initial_states_it->second;
+        for (auto it = list.begin(); it != list.end(); it++) {
+          LOG(ERROR) << "initial_state " << it->first << " " << it->second.index_code_.ToString(this);
+          q.push(*it);
         }
       }
     }
-    // use_new_graph_indices = true;
-    // transpose_graph(syll_graph.interpreted_length, syll_graph.edges, new_indices);
+    if (q.empty()) {
+      LOG(ERROR) << "Fall back to full search";
+      TableQuery initial_state(index_);
+      q.push({start_pos, initial_state});
+    }
   } else {
 #ifdef DEBUG
-    LOG(ERROR) << "Query: " << syll_graph.input.substr(start_pos);
+    if (search_context) LOG(ERROR) << "Query: " << search_context->input.substr(start_pos);
 #endif
-
-    result->clear();
     
     TableQuery initial_state(index_);
     q.push({start_pos, initial_state});
   }
-  result->clear();
+  
+  if (search_context && !search_context->prev_search_state) {
+      search_context->prev_search_state = New<SearchState>();
+  }
   
   const SpellingIndices& indices = syll_graph.indices;
   
   while (!q.empty()) {
-    size_t current_pos = q.front().pos;
-    TableQuery query(q.front().table_query);
+    size_t current_pos = q.front().first;
+    TableQuery query(q.front().second);
     q.pop();
     if (current_pos >= indices.size()) {
       continue;
@@ -861,6 +804,10 @@ bool Table::Query(const SyllableGraph& syll_graph,
         if (end_pos < syll_graph.interpreted_length &&
             query.Advance(syll_id, props->credibility)) {
           q.push({end_pos, query});
+          if (search_context) {
+            LOG(ERROR) << "  DFS add node " << start_pos << " " << end_pos << " " << query.index_code_.ToString(this);
+            search_context->prev_search_state->graph[start_pos][end_pos].push_back({end_pos, query});
+          }
           query.Backdate();
         }
       }

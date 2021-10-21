@@ -11,6 +11,7 @@
 #include <rime/translation.h>
 #include <rime/translator.h>
 #include <rime/algo/algebra.h>
+#include <rime/algo/syllabifier.h>
 #include <rime/gear/memory.h>
 #include <rime/gear/translator_commons.h>
 
@@ -26,8 +27,6 @@ struct SyllableGraph;
 
 class DictEntryIterator;
 using DictEntryCollector = map<size_t, DictEntryIterator>;
-
-using WordGraph = map<int, map<int, DictEntryList>>;
 
 class ScriptTranslator : public Translator,
                          public Memory,
@@ -55,11 +54,7 @@ class ScriptTranslator : public Translator,
   bool enable_correction_ = false;
   the<Corrector> corrector_;
   the<Poet> poet_;
-                           
-   // For resuing previous query result
-   an<SyllableGraph> prev_syllable_graph_;
-   an<DictEntryCollector> prev_phrase_;
-   WordGraph query_result_cache_;
+  SearchContext search_context_;
 };
 
 }  // namespace rime

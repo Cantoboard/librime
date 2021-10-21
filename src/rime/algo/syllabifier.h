@@ -35,12 +35,51 @@ using SpellingIndex = hash_map<SyllableId, SpellingPropertiesList>;
 using SpellingIndices = vector<SpellingIndex>;
 
 struct SyllableGraph {
-  string input;
   size_t input_length = 0;
   size_t interpreted_length = 0;
   VertexMap vertices;
   EdgeMap edges;
   SpellingIndices indices;
+};
+
+class DictEntryList;
+using WordGraph = map<int, map<int, DictEntryList>>;
+
+struct SearchState;
+
+struct SearchContext {
+  string input, prev_input;
+  size_t incremental_search_from_pos;
+  WordGraph prev_words;
+  an<SearchState> prev_search_state;
+#define DEBUG
+  template<typename T>
+  static void RemoveStateEntriesFromGraph(map<int, map<int, T>>& graph, size_t cache_valid_len) {
+    for (auto it_by_start_pos = graph.begin(); it_by_start_pos != graph.end();) {
+      size_t start_pos = it_by_start_pos->first;
+      LOG(ERROR) << "RemoveStateEntriesFromGraph start_pos " << start_pos << " cache_valid_len " << cache_valid_len;
+      if (start_pos > cache_valid_len) {
+#ifdef DEBUG
+      LOG(ERROR) << "Removing row " << start_pos;
+#endif
+        it_by_start_pos = graph.erase(it_by_start_pos);
+      } else {
+        auto& state_same_start_pos = it_by_start_pos->second;
+        for (auto it_by_end_pos = state_same_start_pos.begin(); it_by_end_pos != state_same_start_pos.end();) {
+          size_t end_pos = it_by_end_pos->first;
+          if (end_pos > cache_valid_len) {
+#ifdef DEBUG
+            LOG(ERROR) << "Removing entry " << start_pos << "," << end_pos;
+#endif
+            it_by_end_pos = state_same_start_pos.erase(it_by_end_pos);
+          } else {
+            it_by_end_pos++;
+          }
+        }
+        it_by_start_pos++;
+      }
+    }
+  }
 };
 
 class Syllabifier {

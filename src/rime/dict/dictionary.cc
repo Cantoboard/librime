@@ -200,10 +200,10 @@ static void lookup_table(Table* table,
                          DictEntryCollector* collector,
                          const SyllableGraph& syllable_graph,
                          size_t start_pos,
-                         size_t incremental_search_from_pos,
+                         SearchContext* search_context,
                          double initial_credibility) {
   TableQueryResult result;
-  if (!table->Query(syllable_graph, start_pos, incremental_search_from_pos, &result)) {
+  if (!table->Query(syllable_graph, start_pos, search_context, &result)) {
     return;
   }
   // copy result
@@ -216,12 +216,15 @@ static void lookup_table(Table* table,
           size_t actual_end_pos = dictionary::match_extra_code(
               a.extra_code(), 0, syllable_graph, end_pos);
           if (actual_end_pos == 0) continue;
+          LOG(ERROR) << "Add chunk long " << start_pos << " " << actual_end_pos << " " << a.code().ToString(table);
           (*collector)[actual_end_pos].AddChunk(
               {table, a.code(), a.entry(), cr});
         }
         while (a.Next());
       }
       else {
+        LOG(ERROR) << "Add chunk short " << start_pos << " " << end_pos << " " << a.code().ToString(table);
+
         (*collector)[end_pos].AddChunk({table, a, cr});
       }
     }
@@ -239,7 +242,7 @@ Dictionary::Lookup(const SyllableGraph& syllable_graph,
     if (!table->IsOpen())
       continue;
     lookup_table(table.get(), collector.get(),
-                 syllable_graph, start_pos, 0, initial_credibility);
+                 syllable_graph, start_pos, nullptr, initial_credibility);
   }
   if (collector->empty())
     return nullptr;
@@ -253,7 +256,7 @@ Dictionary::Lookup(const SyllableGraph& syllable_graph,
 an<DictEntryCollector>
 Dictionary::LookupIncremental(const SyllableGraph& syllable_graph,
                               size_t start_pos,
-                              size_t incremental_search_from_pos,
+                              SearchContext* search_context,
                               double initial_credibility) {
   if (!loaded())
     return nullptr;
@@ -262,7 +265,7 @@ Dictionary::LookupIncremental(const SyllableGraph& syllable_graph,
     if (!table->IsOpen())
       continue;
     lookup_table(table.get(), collector.get(),
-                 syllable_graph, start_pos, incremental_search_from_pos, initial_credibility);
+                 syllable_graph, start_pos, search_context, initial_credibility);
   }
   // sort each group of equal code length
   for (auto& v : *collector) {
