@@ -14,8 +14,8 @@
 #include <rime/dict/table.h>
 #include <boost/range/adaptor/reversed.hpp>
 
- #define DEBUG
-#define DFS_DEBUG
+// #define DEBUG
+// #define DFS_DEBUG
 
 long debug_counter = 0;
 
@@ -697,6 +697,13 @@ static size_t longest_common_prefix(const string& a, const string& b) {
   return first_mismatch.first - a_begin_it;
 }
 
+void Table::UpdateSearchState(SearchContext* search_context) {
+  if (search_context && search_context->prev_search_state) {
+    SearchStateGraph& initial_states = search_context->prev_search_state->graph;
+    SearchContext::RemoveStateEntriesFromGraph(initial_states, search_context->incremental_search_from_pos);
+  }
+}
+
 bool Table::Query(const SyllableGraph& syll_graph,
                   size_t start_pos,
                   SearchContext* search_context,
@@ -709,19 +716,24 @@ bool Table::Query(const SyllableGraph& syll_graph,
   result->clear();
   std::queue<QueryNode> q;
   
+  TableQuery initial_state(index_);
+  q.push({start_pos, initial_state});
+  
   size_t incremental_search_from_pos = 0;
   if (search_context && search_context->prev_search_state && search_context->incremental_search_from_pos > 0) {
+    incremental_search_from_pos = search_context->incremental_search_from_pos;
 #ifdef DEBUG
     if (incremental_search_from_pos == 0) {
       LOG(ERROR) << "New query: " << search_context->input.substr(start_pos);
     } else {
-      LOG(ERROR) << "Query: " << search_context->input.substr(start_pos) << " Prev: " << search_context->prev_input.substr(start_pos) << incremental_search_from_pos;
+      LOG(ERROR) << "Query: " << search_context->input.substr(start_pos) << " Prev: " << search_context->prev_input.substr(start_pos) << " " << incremental_search_from_pos;
     }
 #endif
+    
     incremental_search_from_pos = search_context->incremental_search_from_pos;
     SearchStateGraph& initial_states = search_context->prev_search_state->graph;
     
-    SearchContext::RemoveStateEntriesFromGraph(initial_states, incremental_search_from_pos);
+    // LOG(ERROR) << "incremental_search_from_pos " << incremental_search_from_pos;
     
     //LOG(ERROR) << "incremental_search_from_pos " << incremental_search_from_pos << " " << search_context->prev_words.empty() ? 0 : search_context->prev_words.rbegin()->first;
     //LOG(ERROR) << "initial_states " << initial_states.size();
@@ -732,23 +744,21 @@ bool Table::Query(const SyllableGraph& syll_graph,
       for(auto initial_states_it = initial_states_it_start_at.begin(); initial_states_it != initial_states_it_start_at.end(); initial_states_it++) {
         const auto& list = initial_states_it->second;
         for (auto it = list.begin(); it != list.end(); it++) {
+#ifdef DFS_DEBUG
           LOG(ERROR) << "initial_state " << it->first << " " << it->second.index_code_.ToString(this);
+#endif
           q.push(*it);
         }
       }
     }
     if (q.empty()) {
-      LOG(ERROR) << "Fall back to full search";
-      TableQuery initial_state(index_);
-      q.push({start_pos, initial_state});
+      LOG(ERROR) << "Fallback to full search";
+      incremental_search_from_pos = 0;
     }
   } else {
-#ifdef DEBUG
-    if (search_context) LOG(ERROR) << "Query: " << search_context->input.substr(start_pos);
+#ifdef DFS_DEBUG
+    if (search_context) LOG(ERROR) << "Full Query: " << search_context->input.substr(start_pos);
 #endif
-    
-    TableQuery initial_state(index_);
-    q.push({start_pos, initial_state});
   }
   
   if (search_context && !search_context->prev_search_state) {
@@ -764,7 +774,6 @@ bool Table::Query(const SyllableGraph& syll_graph,
     if (current_pos >= indices.size()) {
       continue;
     }
-    
 #ifdef DFS_DEBUG
     LOG(ERROR) << "DFS: " <<  current_pos << " " << query.index_code_.ToString(this);
 #endif
@@ -778,7 +787,7 @@ bool Table::Query(const SyllableGraph& syll_graph,
 #ifdef DFS_DEBUG
         string log = accessor.EntriesToString(this);
         if (!log.empty())
-          LOG(ERROR) << "  DFS add entry " << log << " " << current_pos;
+          LOG(ERROR) << "  DFS add lvl4 entry " << log << " " << current_pos;
 #endif
         
         (*result)[current_pos].push_back(accessor);
@@ -798,14 +807,16 @@ bool Table::Query(const SyllableGraph& syll_graph,
 #ifdef DFS_DEBUG
         string log = accessor.EntriesToString(this);
         if (!log.empty())
-          LOG(ERROR) << "  DFS add entry " << log << " " << end_pos;
+          LOG(ERROR) << "  DFS add entry " << GetSyllableById(syll_id) << " " << log << " " << end_pos;
 #endif
         
         if (end_pos < syll_graph.interpreted_length &&
             query.Advance(syll_id, props->credibility)) {
           q.push({end_pos, query});
           if (search_context) {
+#ifdef DFS_DEBUG
             LOG(ERROR) << "  DFS add node " << start_pos << " " << end_pos << " " << query.index_code_.ToString(this);
+#endif
             search_context->prev_search_state->graph[start_pos][end_pos].push_back({end_pos, query});
           }
           query.Backdate();

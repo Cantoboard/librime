@@ -160,7 +160,7 @@ class Table : public MappedFile {
   RIME_API string GetEntryText(const table::Entry& entry);
 
   uint32_t dict_file_checksum() const;
-
+  static void UpdateSearchState(SearchContext* search_context);
  private:
   table::Index* BuildIndex(const Vocabulary& vocabulary,
                            size_t num_syllables);

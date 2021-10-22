@@ -216,14 +216,14 @@ static void lookup_table(Table* table,
           size_t actual_end_pos = dictionary::match_extra_code(
               a.extra_code(), 0, syllable_graph, end_pos);
           if (actual_end_pos == 0) continue;
-          LOG(ERROR) << "Add chunk long " << start_pos << " " << actual_end_pos << " " << a.code().ToString(table);
+          // LOG(ERROR) << "Add chunk long " << start_pos << " " << actual_end_pos << " " << a.code().ToString(table);
           (*collector)[actual_end_pos].AddChunk(
               {table, a.code(), a.entry(), cr});
         }
         while (a.Next());
       }
       else {
-        LOG(ERROR) << "Add chunk short " << start_pos << " " << end_pos << " " << a.code().ToString(table);
+        // LOG(ERROR) << "Add chunk short " << start_pos << " " << end_pos << " " << a.code().ToString(table);
 
         (*collector)[end_pos].AddChunk({table, a, cr});
       }

@@ -52,12 +52,13 @@ struct SearchContext {
   size_t incremental_search_from_pos;
   WordGraph prev_words;
   an<SearchState> prev_search_state;
-#define DEBUG
   template<typename T>
   static void RemoveStateEntriesFromGraph(map<int, map<int, T>>& graph, size_t cache_valid_len) {
     for (auto it_by_start_pos = graph.begin(); it_by_start_pos != graph.end();) {
       size_t start_pos = it_by_start_pos->first;
+#ifdef DEBUG
       LOG(ERROR) << "RemoveStateEntriesFromGraph start_pos " << start_pos << " cache_valid_len " << cache_valid_len;
+#endif
       if (start_pos > cache_valid_len) {
 #ifdef DEBUG
       LOG(ERROR) << "Removing row " << start_pos;

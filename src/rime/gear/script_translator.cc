@@ -27,7 +27,7 @@
 
 // #define DEBUG
 
-bool disable_incremental_search = true;
+bool disable_incremental_search = false;
 
 //static const char* quote_left = "\xef\xbc\x88";
 //static const char* quote_right = "\xef\xbc\x89";
@@ -394,6 +394,8 @@ void ScriptTranslation::UpdateSearchState(const string& input) {
   }
   
   SearchContext::RemoveStateEntriesFromGraph(search_context_.prev_words, cache_valid_len);
+  Table::UpdateSearchState(&search_context_);
+  
   if (!search_context_.prev_words.empty())
     cache_valid_len = search_context_.prev_words.rbegin()->first;
   /*
@@ -491,7 +493,9 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
   // if (prev_phrase_ && !prev_phrase_->empty()) incremental_search_from = prev_phrase_->rbegin()->first;
   // phrase_ = dict->LookupIncremental(syllable_graph, 0, incremental_search_from, 0);
   
-  LOG(ERROR) << "Pharse";
+#ifdef DEBUG
+  LOG(ERROR) << "Pharse " << input_;
+#endif
   phrase_ = dict->Lookup(syllable_graph, 0);
   
   /*
@@ -545,9 +549,11 @@ bool ScriptTranslation::Evaluate(Dictionary* dict, UserDictionary* user_dict) {
       }
   }
 
+  // Always run MakeSentence to prime word graph.
+  auto sentence = MakeSentence(dict, user_dict);
   if ((translated_len < consumed || is_first_candidate_a_correction) &&
       syllable_graph.edges.size() > 1) {  // at least 2 syllables required
-    sentence_ = MakeSentence(dict, user_dict);
+    sentence_ = sentence;
   }
 
   return !CheckEmpty();
@@ -721,8 +727,9 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
                                              UserDictionary* user_dict) {
   const int kMaxSyllablesForUserPhraseQuery = 5;
   const auto& syllable_graph = syllabifier_->syllable_graph();
-  
+#ifdef DEBUG
   LOG(ERROR) << "MakeSentence new input: " << input_ << " prev " << search_context_.prev_input;
+#endif
   UpdateSearchState(input_);
   
   WordGraph& graph = search_context_.prev_words;
@@ -749,7 +756,9 @@ an<Sentence> ScriptTranslation::MakeSentence(Dictionary* dict,
         log += (*word_it)->text + " ";
       }
     }
+#ifdef DEBUG
     LOG(ERROR) << "Word cloud start: " << it->first << " " << log;
+#endif
   }
   search_context_.prev_input = input_;
   if (auto sentence =
