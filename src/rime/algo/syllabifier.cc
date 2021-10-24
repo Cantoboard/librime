@@ -171,7 +171,7 @@ int Syllabifier::BuildSyllableGraph(const string &input,
           ++k;
           continue; // Don't care correction edges
         }
-        if (k->second.type > last_type) {
+        if (k->second.type > last_type && k->second.type != kAbbreviationEncoding) {
           j->second.erase(k++);
         }
         else {

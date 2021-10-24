@@ -28,6 +28,8 @@ class DictSettings : public Config {
   double min_phrase_weight();
   an<ConfigList> GetTables();
   int GetColumnIndex(const string& column_label);
+  
+  bool generate_abbrev_encodings();
 };
 
 }  // namespace rime

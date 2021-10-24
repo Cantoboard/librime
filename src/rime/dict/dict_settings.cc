@@ -114,4 +114,8 @@ int DictSettings::GetColumnIndex(const string& column_label) {
   return -1;
 }
 
+bool DictSettings::generate_abbrev_encodings() {
+  return (*this)["generate_abbrev_encodings"].ToBool();
+}
+
 }  // namespace rime

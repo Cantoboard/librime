@@ -19,6 +19,7 @@ struct RawDictEntry {
   RawCode raw_code;
   string text;
   double weight;
+  RawCode override_code;
 };
 
 // code -> weight
@@ -53,6 +54,13 @@ class EntryCollector : public PhraseCollector {
   void CreateEntry(const string &word,
                    const string &code_str,
                    const string &weight_str);
+  
+  void CreateAbbrevEntry(int i,
+                         const string &word,
+                         RawCode& code,
+                         const RawCode& org_code,
+                         double org_weight);
+  
   bool TranslateWord(const string& word,
                      vector<string>* code);
  protected:
@@ -69,6 +77,7 @@ class EntryCollector : public PhraseCollector {
   set<string/* word */> collection;
   WordMap words;
   WeightMap total_weight;
+  bool generate_abbrev_encodings;
 };
 
 }  // namespace rime

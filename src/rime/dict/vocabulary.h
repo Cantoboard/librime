@@ -60,6 +60,7 @@ struct DictEntry {
   double weight = 0.0;
   int commit_count = 0;
   Code code;  // multi-syllable code from prism
+  Code override_code;  // For entry with abbrev edges.
   string custom_code;  // user defined code
   int remaining_code_length = 0;
 

@@ -168,28 +168,38 @@ int main(int argc, char *argv[]) {
   RimeConsole console;
   // "-i" turns on interactive mode (no commit at the end of line)
   bool interactive = argc > 1 && !strcmp(argv[1], "-i");
+  // interactive = true;
   console.set_interactive(interactive);
+  
+  //profile(console, "ss");
+  //return 0;
   /*
   profile(console, "diulaamaa");
   profile(console, "gfhgsdgm");
+  profile(console, "dnlmhgc");
+  profile(console, "dnlmhgccnlmstp");
+   */
   
   string s = "s";
   for (int i = 0; i < 16; ++i) {
     profile(console, s);
     s += "s";
-  }*/
+  }
   
   /*
   profile(console, "abcdefgh");
   profile(console, "dnlmhgccnlmstp");
   profile(console, "ghksfdghls");
   profile(console, "ghfgjkawuiwert");*/
-  profile(console, "sssssssssssssss");
-  profile(console, "lllllllllllllll");
-  profile(console, "ddddddddddddddd");
+  
+  // console.ProcessLine("gfhg");
+  
+  //profile(console, "sssssssssssssss");
+  //profile(console, "lllllllllllllll");
+  //profile(console, "ddddddddddddddd");
   
   //std::cerr << "hit: " << rime::cachceHit << " miss: " << rime::cacheMiss << " ms " << counter << std::endl;
-  return 0;
+  //return 0;
   
   // process input
   string line;

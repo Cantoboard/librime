@@ -44,6 +44,7 @@ class DictCompiler {
                   const vector<string>& dict_files,
                   uint32_t dict_file_checksum);
   bool BuildPrism(const string& schema_file,
+                  DictSettings* settings,
                   uint32_t dict_file_checksum,
                   uint32_t schema_file_checksum);
   bool BuildReverseDb(DictSettings* settings,

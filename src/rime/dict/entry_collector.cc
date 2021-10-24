@@ -13,6 +13,8 @@
 
 namespace rime {
 
+static const double kAbbreviationEncodingPenalty = 0.5;
+
 EntryCollector::EntryCollector() {}
 
 EntryCollector::EntryCollector(Syllabary&& fixed_syllabary)
@@ -33,6 +35,8 @@ void EntryCollector::Configure(DictSettings* settings) {
     encoder.reset(new ScriptEncoder(this));
   }
   encoder->LoadSettings(settings);
+  
+  generate_abbrev_encodings = settings->generate_abbrev_encodings();
 }
 
 void EntryCollector::Collect(const vector<string>& dict_files) {
@@ -151,6 +155,48 @@ void EntryCollector::Finish() {
   LOG(INFO) << "Pass 3: total " << num_entries << " entries collected.";
 }
 
+void EntryCollector::CreateAbbrevEntry(int i,
+                                       const string &word,
+                                       RawCode& raw_code,
+                                       const RawCode& org_code,
+                                       double org_weight) {
+  if (i >= Code::kIndexCodeMaxLength || i >= raw_code.size()) return;
+  
+  string org_syllable = raw_code[i];
+  if (org_code.empty()) {
+    LOG(WARNING) << "invalid entry having empty raw code " << word << ": " << boost::join(raw_code, ",") << ".";
+    return;
+  }
+  
+  raw_code[i] = raw_code[i].substr(0, 1);
+  
+  // learn new syllables, or check if syllables are in the fixed syllabary.
+  for (const string& s : raw_code) {
+    if (syllabary.find(s) == syllabary.end()) {
+      if (build_syllabary) {
+        syllabary.insert(s);
+      } else {
+        LOG(ERROR) << "dropping entry '" << word
+                   <<  "' with invalid syllable: " << s;
+        return;
+      }
+    }
+  }
+  
+  RawDictEntry e;
+  e.raw_code = raw_code;
+  e.text = word;
+  e.weight = org_weight * kAbbreviationEncodingPenalty;
+  e.override_code = org_code;
+  entries.push_back(e);
+  
+  CreateAbbrevEntry(i + 1, word, raw_code, org_code, org_weight);
+  
+  raw_code[i] = org_syllable;
+  
+  CreateAbbrevEntry(i + 1, word, raw_code, org_code, org_weight);
+}
+
 void EntryCollector::CreateEntry(const string &word,
                                  const string &code_str,
                                  const string &weight_str) {
@@ -208,6 +254,11 @@ void EntryCollector::CreateEntry(const string &word,
   }
   entries.push_back(e);
   ++num_entries;
+  
+  if (generate_abbrev_encodings) {
+    RawCode code_buf(e.raw_code);
+    CreateAbbrevEntry(0, word, code_buf, e.raw_code, e.weight);
+  }
 }
 
 bool EntryCollector::TranslateWord(const string& word,

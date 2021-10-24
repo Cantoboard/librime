@@ -93,7 +93,7 @@ class Phrase : public Candidate {
   }
   double weight() const { return entry_->weight; }
   void set_weight(double weight) { entry_->weight = weight; }
-  Code& code() const { return entry_->code; }
+  Code& code() const { return entry_->override_code.empty() ? entry_->code : entry_->override_code; }
   const DictEntry& entry() const { return *entry_; }
   const Language* language() const { return language_; }
   Spans spans() {

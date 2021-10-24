@@ -51,7 +51,7 @@ bool compare_chunk_by_head_element(const Chunk& a, const Chunk& b) {
 }
 
 size_t match_extra_code(const table::Code* extra_code, size_t depth,
-                        const SyllableGraph& syll_graph, size_t current_pos) {
+                        const SyllableGraph& syll_graph, size_t current_pos, Table* table) {
   if (!extra_code || depth >= extra_code->size)
     return current_pos;  // success
   if (current_pos >= syll_graph.interpreted_length)
@@ -67,7 +67,7 @@ size_t match_extra_code(const table::Code* extra_code, size_t depth,
   size_t best_match = 0;
   for (const SpellingProperties* props : spellings->second) {
     size_t match_end_pos = match_extra_code(extra_code, depth + 1,
-                                            syll_graph, props->end_pos);
+                                            syll_graph, props->end_pos, table);
     if (!match_end_pos) continue;
     if (match_end_pos > best_match)
       best_match = match_end_pos;
@@ -112,7 +112,14 @@ an<DictEntry> DictEntryIterator::Peek() {
     DLOG(INFO) << "creating temporary dict entry '"
                << chunk.table->GetEntryText(e) << "'.";
     entry_ = New<DictEntry>();
-    entry_->code = chunk.code;
+    if (e.override_code.size == 0) {
+      entry_->code = chunk.code;
+    } else {
+      Code code;
+      code.resize(e.override_code.size);
+      std::copy(e.override_code.begin(), e.override_code.end(), code.begin());
+      entry_->code.swap(code);
+    }
     entry_->text = chunk.table->GetEntryText(e);
     const double kS = 18.420680743952367; // log(1e8)
     entry_->weight = e.weight - kS + chunk.credibility;
@@ -206,7 +213,7 @@ static void lookup_table(Table* table,
       if (a.extra_code()) {
         do {
           size_t actual_end_pos = dictionary::match_extra_code(
-              a.extra_code(), 0, syllable_graph, end_pos);
+              a.extra_code(), 0, syllable_graph, end_pos, table);
           if (actual_end_pos == 0) continue;
           (*collector)[actual_end_pos].AddChunk(
               {table, a.code(), a.entry(), cr});

@@ -45,6 +45,7 @@ using Weight = float;
 struct Entry {
   StringType text;
   Weight weight;
+  Code override_code;
 };
 
 struct LongEntry {

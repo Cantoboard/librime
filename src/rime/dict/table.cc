@@ -21,8 +21,8 @@ namespace std {
 
 namespace rime {
 
-const char kTableFormatLatest[] = "Rime::Table/4.0";
-const int kTableFormatLowestCompatible = 4.0;
+const char kTableFormatLatest[] = "Rime::Table/4.1";
+const int kTableFormatLowestCompatible = 4.1;
 
 const char kTableFormatPrefix[] = "Rime::Table/";
 const size_t kTableFormatPrefixLen = sizeof(kTableFormatPrefix) - 1;
@@ -138,7 +138,21 @@ const table::Code* TableAccessor::extra_code() const {
 
 Code TableAccessor::code() const {
   auto extra = extra_code();
-  Code code(index_code());
+  Code code;
+
+  if (entries_) {
+    const auto& entry = entries_[cursor_];
+    if (entry.override_code.size == 0)
+      code = Code(index_code());
+    else {
+      for (auto p = entry.override_code.begin(); p != entry.override_code.end(); ++p) {
+        code.push_back(*p);
+      }
+    }
+  } else {
+    code = Code(index_code());
+  }
+  
   if (!extra) {
     return code;
   }
@@ -583,6 +597,14 @@ bool Table::BuildEntry(const DictEntry& dict_entry, table::Entry* entry) {
     return false;
   }
   entry->weight = static_cast<table::Weight>(dict_entry.weight);
+  
+  size_t override_code_len = dict_entry.override_code.size();
+  entry->override_code.size = override_code_len;
+  entry->override_code.at = Allocate<SyllableId>(override_code_len);
+  std::copy(dict_entry.override_code.begin(),
+            dict_entry.override_code.end(),
+            entry->override_code.begin());
+
   return true;
 }
 
@@ -655,11 +677,19 @@ bool Table::Query(const SyllableGraph& syll_graph, size_t start_pos,
       }
       continue;
     }
+    bool found_abbrev_syllable = false;
     for (const auto& spellings : index) {
       SyllableId syll_id = spellings.first;
       for (auto props : spellings.second) {
-        TableAccessor accessor(query.Access(syll_id, props->credibility));
         size_t end_pos = props->end_pos;
+        size_t spelling_len = end_pos - current_pos;
+        if (found_abbrev_syllable && spelling_len == 1 && props->type != kAbbreviationEncoding) {
+          continue;
+        }
+        if (spelling_len == 1 && props->type == kAbbreviationEncoding) {
+          found_abbrev_syllable = true;
+        }
+        TableAccessor accessor(query.Access(syll_id, props->credibility));
         if (!accessor.exhausted()) {
           (*result)[end_pos].push_back(accessor);
         }

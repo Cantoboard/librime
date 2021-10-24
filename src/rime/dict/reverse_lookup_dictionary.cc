@@ -94,6 +94,7 @@ bool ReverseDb::Build(DictSettings* settings,
   std::unordered_map<string, double> textSyllableWeights;
   int syllable_id = 0;
   for (const string& syllable : syllabary) {
+    if (settings->generate_abbrev_encodings() && syllable.size() == 1) continue;
     auto it = vocabulary.find(syllable_id++);
     if (it == vocabulary.end())
       continue;

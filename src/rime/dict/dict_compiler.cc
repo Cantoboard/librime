@@ -160,6 +160,7 @@ bool DictCompiler::Compile(const string &schema_file) {
   rebuild_table = false;
   rebuild_prism = false;
 #endif
+  // rebuild_table = true; // UFO
   Syllabary syllabary;
   if (rebuild_table) {
     EntryCollector collector;
@@ -174,6 +175,7 @@ bool DictCompiler::Compile(const string &schema_file) {
   }
   if (rebuild_prism &&
       !BuildPrism(schema_file,
+                  &settings,
                   dict_file_checksum,
                   schema_file_checksum)) {
     return false;
@@ -257,6 +259,13 @@ bool DictCompiler::BuildTable(int table_index,
         continue;
       }
       auto e = New<DictEntry>();
+      if (!r.override_code.empty()) {
+        Code override_code;
+        for (const auto& s : r.override_code) {
+          override_code.push_back(syllable_to_id[s]);
+        }
+        e->override_code.swap(override_code);
+      }
       e->code.swap(code);
       e->text.swap(r.text);
       e->weight = log(r.weight > 0 ? r.weight : DBL_EPSILON);
@@ -306,6 +315,7 @@ bool DictCompiler::BuildReverseDb(DictSettings* settings,
 }
 
 bool DictCompiler::BuildPrism(const string &schema_file,
+                              DictSettings* settings,
                               uint32_t dict_file_checksum,
                               uint32_t schema_file_checksum) {
   LOG(INFO) << "building prism...";
@@ -330,12 +340,20 @@ bool DictCompiler::BuildPrism(const string &schema_file,
     }
     Projection p;
     auto algebra = config.GetList("speller/algebra");
+    set<string> abbrev_encodings_syllabary;
     if (algebra && p.Load(algebra)) {
       for (const auto& x : syllabary) {
         script.AddSyllable(x);
+        if (settings->generate_abbrev_encodings() && x.length() == 1) {
+          abbrev_encodings_syllabary.insert(x);
+        }
       }
       if (!p.Apply(&script)) {
         script.clear();
+      }
+      
+      for (const string& x : abbrev_encodings_syllabary) {
+        script[x].front().properties.type = kAbbreviationEncoding;
       }
     }
 
