@@ -117,10 +117,10 @@ bool ReverseDb::Build(DictSettings* settings,
     if (v.second.size() == 1) {
       value = boost::algorithm::join(v.second, " ");
     } else {
-      std::vector<string> sortedEntries(v.second.begin(), v.second.end());
-      std::sort(sortedEntries.begin(), sortedEntries.end(), [key, textSyllableWeights](string a, string b) {
+      auto comp = [&key, &textSyllableWeights](string a, string b) {
         return textSyllableWeights.at(key + a) > textSyllableWeights.at(key + b);
-      });
+      };
+      set<string, decltype(comp)> sortedEntries(v.second.begin(), v.second.end(), comp);
       value = boost::algorithm::join(sortedEntries, " ");
     }
     key_trie_builder.Add(key, 0.0, &key_ids[i]);
