@@ -144,7 +144,7 @@ T* MappedFile::Allocate(size_t count) {
   if (used_space + required_space > file_size) {
     // not enough space; grow the file
     size_t new_size = (std::max)(used_space + required_space, file_size * 2);
-    if(!Resize(new_size) || !OpenReadWrite())
+    if(!Resize(new_size))
       return NULL;
   }
   T* ptr = reinterpret_cast<T*>(address() + used_space);

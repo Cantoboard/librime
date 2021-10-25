@@ -12,35 +12,11 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <rime/dict/mapped_file.h>
 
-#ifdef BOOST_RESIZE_FILE
-
-#define RESIZE_FILE boost::filesystem::resize_file
-
-#else
-
-#ifdef _WIN32
-#include <windows.h>
-#define RESIZE_FILE(P,SZ) (resize_file_api(P, SZ) != 0)
-static BOOL resize_file_api(const char* p, boost::uintmax_t size) {
-  HANDLE handle = CreateFileA(p, GENERIC_WRITE, 0, 0, OPEN_EXISTING,
-                              FILE_ATTRIBUTE_NORMAL, 0);
-  LARGE_INTEGER sz;
-  sz.QuadPart = size;
-  return handle != INVALID_HANDLE_VALUE
-    && ::SetFilePointerEx(handle, sz, 0, FILE_BEGIN)
-    && ::SetEndOfFile(handle)
-    && ::CloseHandle(handle);
-}
-#else
-#include <unistd.h>
-#define RESIZE_FILE(P,SZ) (::truncate(P, SZ) == 0)
-#endif  // _WIN32
-
-#endif  // BOOST_RESIZE_FILE
-
 namespace rime {
 
 class MappedFileImpl {
+private:
+  size_t file_size;
  public:
   enum OpenMode {
     kOpenReadOnly,
@@ -51,8 +27,20 @@ class MappedFileImpl {
     boost::interprocess::mode_t file_mapping_mode =
         (mode == kOpenReadOnly) ? boost::interprocess::read_only
                                 : boost::interprocess::read_write;
+    
     file_.reset(new boost::interprocess::file_mapping(file_name.c_str(), file_mapping_mode));
+#ifndef _WIN32
+    if (mode != kOpenReadOnly) {
+      // Reserve a 1GB address range for dictionary building for dictionary file to resize.
+      region_.reset(new boost::interprocess::mapped_region(*file_, file_mapping_mode, 0, 1024 * 1024 * 1024));
+    } else {
+      region_.reset(new boost::interprocess::mapped_region(*file_, file_mapping_mode));
+    }
+#else
     region_.reset(new boost::interprocess::mapped_region(*file_, file_mapping_mode));
+#endif
+    
+    file_size = boost::filesystem::file_size(file_->get_name());
   }
   ~MappedFileImpl() {
     region_.reset();
@@ -65,9 +53,29 @@ class MappedFileImpl {
     return region_->get_address();
   }
   size_t get_size() const {
-    return region_->get_size();
+    return file_size;
   }
+  bool Resize(size_t capacity) {
+    LOG(INFO) << "resize file to: " << capacity;
+    
+    try {
+      boost::filesystem::resize_file(file_->get_name(), capacity);
+      file_size = capacity;
+      if (region_) {
+        region_->flush();
+        void* org_address = region_->get_address();
+        boost::interprocess::mode_t org_file_mapping_mode = region_->get_mode();
 
+        region_.reset(nullptr);
+        region_.reset(new boost::interprocess::mapped_region(*file_, org_file_mapping_mode, 0, 1024 * 1024 * 1024, org_address));
+      }
+    }
+    catch (std::exception& ex) {
+      LOG(ERROR) << "Failed to resize mapped file: " << ex.what();
+      return false;
+    }
+    return true;
+  }
  private:
   the<boost::interprocess::file_mapping> file_;
   the<boost::interprocess::mapped_region> region_;
@@ -87,7 +95,7 @@ MappedFile::~MappedFile() {
 bool MappedFile::Create(size_t capacity) {
   if (Exists()) {
     LOG(INFO) << "overwriting file '" << file_name_ << "'.";
-    Resize(capacity);
+    boost::filesystem::resize_file(file_name_.c_str(), capacity);
   }
   else {
     LOG(INFO) << "creating file '" << file_name_ << "'.";
@@ -160,16 +168,7 @@ bool MappedFile::Remove() {
 }
 
 bool MappedFile::Resize(size_t capacity) {
-  LOG(INFO) << "resize file to: " << capacity;
-  if (IsOpen())
-    Close();
-  try {
-    RESIZE_FILE(file_name_.c_str(), capacity);
-  }
-  catch (...) {
-    return false;
-  }
-  return true;
+  return file_->Resize(capacity);
 }
 
 String* MappedFile::CreateString(const string& str) {
