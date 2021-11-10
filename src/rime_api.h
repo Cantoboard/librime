@@ -233,6 +233,7 @@ RIME_API void RimeInitialize(RimeTraits *traits);
 RIME_API void RimeFinalize();
 
 RIME_API Bool RimeStartMaintenance(Bool full_check);
+RIME_API Bool RimeStartQuick();
 
 //! \deprecated Use RimeStartMaintenance(full_check = False) instead.
 RIME_API Bool RimeStartMaintenanceOnWorkspaceChange();

@@ -86,6 +86,11 @@ static uint32_t compute_dict_file_checksum(uint32_t initial_checksum,
 }
 
 bool DictCompiler::Compile(const string &schema_file) {
+#if defined(__APPLE__) && TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+  // Disable dict generation on iOS.
+  LOG(INFO) << "DictCompiler::Compile() disabled on iOS";
+  return true;
+#endif
   LOG(INFO) << "compiling dictionary for " << schema_file;
   bool build_table_from_source = true;
   DictSettings settings;
@@ -154,12 +159,6 @@ bool DictCompiler::Compile(const string &schema_file) {
   if (options_ & kRebuildPrism) {
     rebuild_prism = true;
   }
-#if defined(__APPLE__) && TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
-  // Disable dict generation on iOS.
-  LOG(INFO) << "DictCompiler::Compile() disabled on iOS";
-  rebuild_table = false;
-  rebuild_prism = false;
-#endif
   Syllabary syllabary;
   if (rebuild_table) {
     EntryCollector collector;

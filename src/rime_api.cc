@@ -113,6 +113,18 @@ RIME_API Bool RimeStartMaintenance(Bool full_check) {
   return True;
 }
 
+RIME_API Bool RimeStartQuick() {
+  LoadModules(kDeployerModules);
+  Deployer &deployer(Service::instance().deployer());
+  deployer.RunTask("clean_old_log_files");
+  if (!deployer.RunTask("installation_update")) {
+    return False;
+  }
+  deployer.ScheduleTask("user_dict_upgrade");
+  deployer.StartMaintenance();
+  return True;
+}
+
 RIME_API Bool RimeStartMaintenanceOnWorkspaceChange() {
   return RimeStartMaintenance(False);
 }
