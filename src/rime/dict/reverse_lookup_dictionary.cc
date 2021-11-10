@@ -118,7 +118,7 @@ bool ReverseDb::Build(DictSettings* settings,
       value = boost::algorithm::join(v.second, " ");
     } else {
       std::vector<string> sortedEntries(v.second.begin(), v.second.end());
-      std::sort(sortedEntries.begin(), sortedEntries.end(), [key, textSyllableWeights](string a, string b) {
+      std::sort(sortedEntries.begin(), sortedEntries.end(), [&key, &textSyllableWeights](string a, string b) {
         return textSyllableWeights.at(key + a) > textSyllableWeights.at(key + b);
       });
       value = boost::algorithm::join(sortedEntries, " ");
